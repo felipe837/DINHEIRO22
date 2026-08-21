@@ -617,6 +617,29 @@
 <div class="toast" id="toast"></div>
 
 <script>
+/* ---- camada de armazenamento: usa window.storage aqui no Claude,
+      e cai automaticamente pro localStorage do navegador em qualquer outro lugar (ex: GitHub Pages) ---- */
+const appStorage = {
+  async get(key, shared) {
+    if (typeof window.storage !== 'undefined' && window.storage && typeof window.storage.get === 'function') {
+      try { return await window.storage.get(key, shared); } catch (e) { /* cai pro localStorage abaixo */ }
+    }
+    try {
+      const raw = localStorage.getItem(key);
+      return raw === null ? null : { key, value: raw, shared: !!shared };
+    } catch (e) { return null; }
+  },
+  async set(key, value, shared) {
+    if (typeof window.storage !== 'undefined' && window.storage && typeof window.storage.set === 'function') {
+      try { return await window.storage.set(key, value, shared); } catch (e) { /* cai pro localStorage abaixo */ }
+    }
+    try {
+      localStorage.setItem(key, value);
+      return { key, value, shared: !!shared };
+    } catch (e) { return null; }
+  }
+};
+
 function fmt(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
 
 function aplicarTerminacao(valor, tipo) {
@@ -774,7 +797,7 @@ document.getElementById('sizeTabs').addEventListener('change', calcular);
 
 async function carregarProdutos() {
   try {
-    const result = await window.storage.get('produtos-salvos-v2', false);
+    const result = await appStorage.get('produtos-salvos-v2', false);
     return result ? JSON.parse(result.value) : [];
   } catch (e) { return []; }
 }
@@ -809,7 +832,7 @@ async function salvarProduto() {
   const produtos = await carregarProdutos();
   produtos.unshift({ nome, ...window._ultimoCalculo });
   try {
-    await window.storage.set('produtos-salvos-v2', JSON.stringify(produtos), false);
+    await appStorage.set('produtos-salvos-v2', JSON.stringify(produtos), false);
     nomeInput.value = '';
     renderizarLista();
     mostrarToast('Produto salvo!');
@@ -851,7 +874,7 @@ async function removerProduto(index) {
   const produtos = await carregarProdutos();
   produtos.splice(index, 1);
   try {
-    await window.storage.set('produtos-salvos-v2', JSON.stringify(produtos), false);
+    await appStorage.set('produtos-salvos-v2', JSON.stringify(produtos), false);
     renderizarLista();
   } catch (e) { console.error('Erro ao remover', e); }
 }
@@ -936,20 +959,20 @@ function mostrarAba(aba) {
 /* ---- estoque ---- */
 async function carregarEstoque() {
   try {
-    const result = await window.storage.get('estoque-itens', false);
+    const result = await appStorage.get('estoque-itens', false);
     return result ? JSON.parse(result.value) : [];
   } catch (e) { return []; }
 }
 
 async function salvarEstoque(itens) {
   try {
-    await window.storage.set('estoque-itens', JSON.stringify(itens), false);
+    await appStorage.set('estoque-itens', JSON.stringify(itens), false);
   } catch (e) { console.error('Erro ao salvar estoque', e); }
 }
 
 async function getLimiteAlerta() {
   try {
-    const result = await window.storage.get('estoque-limite-alerta', false);
+    const result = await appStorage.get('estoque-limite-alerta', false);
     return result ? parseInt(result.value) : 3;
   } catch (e) { return 3; }
 }
@@ -957,7 +980,7 @@ async function getLimiteAlerta() {
 async function salvarLimiteAlerta() {
   const valor = parseInt(document.getElementById('estoqueLimiteAlerta').value) || 0;
   try {
-    await window.storage.set('estoque-limite-alerta', String(valor), false);
+    await appStorage.set('estoque-limite-alerta', String(valor), false);
   } catch (e) { /* ignora */ }
   renderizarEstoque();
 }
@@ -1075,14 +1098,14 @@ async function atualizarHintEstoque() {
 
 async function carregarVendas() {
   try {
-    const result = await window.storage.get('vendas-registradas', false);
+    const result = await appStorage.get('vendas-registradas', false);
     return result ? JSON.parse(result.value) : [];
   } catch (e) { return []; }
 }
 
 async function salvarVendas(vendas) {
   try {
-    await window.storage.set('vendas-registradas', JSON.stringify(vendas), false);
+    await appStorage.set('vendas-registradas', JSON.stringify(vendas), false);
   } catch (e) { console.error('Erro ao salvar vendas', e); }
 }
 
@@ -1291,7 +1314,7 @@ function encode(str) { return btoa(unescape(encodeURIComponent(str))); }
 
 async function getSenhaSalva() {
   try {
-    const result = await window.storage.get('app-senha', false);
+    const result = await appStorage.get('app-senha', false);
     return result ? result.value : null;
   } catch (e) { return null; }
 }
@@ -1324,7 +1347,7 @@ async function criarSenha() {
   if (!nova || nova.length < 3) { erro.textContent = 'A senha precisa ter pelo menos 3 caracteres.'; return; }
   if (nova !== confirma) { erro.textContent = 'As senhas não são iguais.'; return; }
   try {
-    await window.storage.set('app-senha', encode(nova), false);
+    await appStorage.set('app-senha', encode(nova), false);
     desbloquear();
   } catch (e) {
     erro.textContent = 'Erro ao salvar a senha, tenta de novo.';
@@ -1356,7 +1379,7 @@ async function esqueciSenha() {
   try {
     const senhaSalva = await getSenhaSalva();
     if (senhaSalva) {
-      await window.storage.set('app-senha', '', false);
+      await appStorage.set('app-senha', '', false);
     }
   } catch (e) { /* ignora */ }
   abrirTelaSenha();
