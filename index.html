@@ -14,6 +14,9 @@
 <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Etiqueta%20de%20Pre%C3%A7o%22%2C%22short_name%22%3A%22Etiqueta%22%2C%22display%22%3A%22standalone%22%2C%22theme_color%22%3A%22%2322323F%22%2C%22background_color%22%3A%22%23ECE4D3%22%7D">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=Space+Mono:wght@400;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <style>
   :root {
     --canvas: #ECE4D3;
@@ -29,6 +32,24 @@
     --good-bg: #E4EDE6;
     --bad-bg: #F3E1DC;
   }
+  body.dark {
+    --canvas: #1C2128;
+    --tag: #262C36;
+    --ink: #E8E4DA;
+    --denim: #7FA3C9;
+    --denim-dark: #D8E2EC;
+    --thread: #E0805F;
+    --thread-dark: #F0A88F;
+    --khaki: #7C8896;
+    --line: #3A414C;
+    --good: #7FC796;
+    --good-bg: rgba(127,199,150,0.15);
+    --bad-bg: rgba(224,128,95,0.18);
+  }
+  body.dark { background-image: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px); }
+  body.dark .price-tag { box-shadow: 3px 3px 0 rgba(0,0,0,0.35); }
+  body.dark .lock-screen { background: #0E1116; }
+  body.dark .lock-card { background: rgba(255,255,255,0.04); }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
@@ -45,6 +66,11 @@
   .tag-icon { width: 40px; height: 40px; flex-shrink: 0; }
   h1 { font-family: 'Fraunces', serif; font-weight: 900; font-size: 26px; margin: 0; color: var(--denim-dark); letter-spacing: -0.3px; line-height: 1.05; }
   p.subtitle { color: var(--ink); opacity: 0.65; margin: 4px 0 0; font-size: 13px; }
+  .theme-toggle {
+    background: var(--tag); border: 1.5px solid var(--line); border-radius: 50%;
+    width: 38px; height: 38px; font-size: 16px; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
 
   .eyebrow { font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--thread); font-weight: 700; margin: 28px 0 10px; }
   .eyebrow:first-of-type { margin-top: 0; }
@@ -175,6 +201,26 @@
   .abc-b { background: #FBF0DD; color: #96690F; }
   .abc-c { background: var(--bad-bg); color: var(--thread-dark); }
 
+  .orcamento-barra { width: 100%; height: 14px; background: var(--line); border-radius: 8px; overflow: hidden; }
+  .orcamento-fill { height: 100%; background: var(--good); transition: width 0.3s ease, background-color 0.3s ease; }
+  .orcamento-fill.aviso { background: #C9910F; }
+  .orcamento-fill.estourou { background: var(--thread); }
+
+  #printArea { display: none; }
+  @media print {
+    body * { visibility: hidden; }
+    #printArea, #printArea * { visibility: visible; }
+    #printArea { display: block; position: absolute; top: 0; left: 0; width: 100%; padding: 20px; }
+    .print-receipt { font-family: 'Work Sans', sans-serif; color: #000; max-width: 320px; margin: 0 auto; }
+    .print-receipt h2 { font-family: 'Fraunces', serif; text-align: center; margin-bottom: 4px; }
+    .print-receipt .pr-line { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #999; font-size: 13px; }
+    .print-receipt .pr-total { font-weight: 700; font-size: 16px; margin-top: 8px; }
+    .print-receipt hr { border: none; border-top: 1px dashed #999; margin: 10px 0; }
+    .print-report table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    .print-report th, .print-report td { border: 1px solid #999; padding: 6px 8px; font-size: 12px; text-align: left; }
+    .print-report h2, .print-report h3 { font-family: 'Fraunces', serif; }
+  }
+
   .save-row { display: flex; gap: 8px; margin-top: 12px; }
   .save-row input[type="text"] { flex: 1; font-family: 'Work Sans', sans-serif; font-size: 14px; }
   button.save-btn { background: var(--denim-dark); color: var(--tag); border: none; border-radius: 3px; padding: 0 18px; font-family: 'Work Sans', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; }
@@ -287,6 +333,9 @@
     display: flex; align-items: center; justify-content: space-between; background: var(--tag);
     border: 1px solid var(--line); border-left: 4px solid var(--denim); border-radius: 3px; padding: 10px 12px; margin-bottom: 8px;
   }
+  .estoque-item.parada { border-left-color: #C9910F; background: #FBF6EC; }
+  .estoque-item .ei-info { display: flex; align-items: center; gap: 10px; }
+  .estoque-item .ei-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); flex-shrink: 0; }
   .estoque-item .ei-name { font-weight: 600; font-size: 13.5px; }
   .estoque-item .ei-sub { font-size: 11px; opacity: 0.55; font-family: 'Space Mono', monospace; }
   .estoque-controls { display: flex; align-items: center; gap: 8px; }
@@ -346,6 +395,13 @@
   .lock-btn:active { background: var(--thread-dark); }
   .lock-error { color: #E8A99A; font-size: 12px; margin-top: 10px; min-height: 14px; font-weight: 600; }
   .lock-forgot { display: block; margin-top: 14px; font-size: 11.5px; color: rgba(251,248,241,0.5); text-decoration: underline; }
+
+  .guia-secao { margin: 18px 0; padding-bottom: 14px; border-bottom: 1px dashed rgba(251,248,241,0.15); }
+  .guia-secao:last-of-type { border-bottom: none; }
+  .guia-titulo { font-family: 'Fraunces', serif; font-weight: 700; font-size: 15px; color: #FBF8F1; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .guia-tag { font-family: 'Space Mono', monospace; font-size: 9.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--thread); background: rgba(180,72,59,0.15); padding: 2px 8px; border-radius: 10px; }
+  .guia-secao p { font-size: 12.5px; line-height: 1.55; color: rgba(251,248,241,0.75); margin: 0; }
+  .guia-secao strong { color: #FBF8F1; }
 </style>
 </head>
 <body>
@@ -387,6 +443,44 @@
   </div>
 </div>
 
+<div class="lock-screen" id="guiaScreen" style="z-index:1200; align-items:flex-start; overflow-y:auto; padding:20px 14px 40px;">
+  <div class="lock-card" style="max-width:440px; text-align:left; margin-top:20px;">
+    <div class="lock-title" style="text-align:center;">📖 Como usar o app</div>
+
+    <div class="guia-secao">
+      <div class="guia-titulo">🧾 Vendas <span class="guia-tag">livre, sem senha</span></div>
+      <p>Aba principal do dia a dia. Em <strong>Vender</strong>: registre produto, quantidade, preço, forma de pagamento (com troco automático pro dinheiro e QR Pix pro Pix), cliente e quem atendeu. Em <strong>Relatórios</strong>: acompanhe faturamento, gráfico, ranking, curva ABC e fiado por período.</p>
+    </div>
+
+    <div class="guia-secao">
+      <div class="guia-titulo">📦 Estoque <span class="guia-tag">senha</span></div>
+      <p>Cadastre peças com tamanho, categoria, foto e quantidade. O app avisa sozinho quando algo está acabando ou parado há muito tempo sem vender. Dá pra gerar um catálogo ou uma lista de "últimas peças" pra mandar no WhatsApp.</p>
+    </div>
+
+    <div class="guia-secao">
+      <div class="guia-titulo">💰 Preço <span class="guia-tag">senha</span></div>
+      <p>Em <strong>Calculadora</strong>: monte o preço de venda por tamanho, com margem, atacado, ancoragem e comparação com concorrente. Em <strong>Financeiro</strong>: despesas fixas, contas a pagar, fluxo de caixa, orçamento, limite anual MEI, chave Pix e backup dos dados.</p>
+    </div>
+
+    <div class="guia-secao">
+      <div class="guia-titulo">🔒 Sobre a senha</div>
+      <p>Só protege Preço e Estoque — Vendas fica sempre livre, então um funcionário consegue vender sem saber a senha. Na primeira vez que abrir, você cria a senha. Ela é uma cortina simples, não uma segurança de banco.</p>
+    </div>
+
+    <div class="guia-secao">
+      <div class="guia-titulo">💾 Onde ficam seus dados</div>
+      <p>Seus dados sincronizam sozinhos entre qualquer aparelho (celular, computador, o de um funcionário) — é só abrir o mesmo link. Ainda assim, <strong>baixe backups de vez em quando</strong> em Preço → Financeiro, por segurança.</p>
+    </div>
+
+    <div class="guia-secao">
+      <div class="guia-titulo">📲 Instalar como app</div>
+      <p>No celular, abra o menu do navegador e escolha "Adicionar à tela inicial" — o app abre em tela cheia, com ícone próprio, como um aplicativo de verdade.</p>
+    </div>
+
+    <button class="lock-btn" onclick="fecharGuia()" style="margin-top:8px;">Entendi</button>
+  </div>
+</div>
+
 <div class="wrap" id="appContent">
 
   <header>
@@ -394,10 +488,12 @@
       <path d="M6 6 L20 6 L34 20 L20 34 L6 20 Z" fill="none" stroke="#22323F" stroke-width="2.2" stroke-linejoin="round"/>
       <circle cx="14" cy="14" r="3" fill="#B4483B"/>
     </svg>
-    <div>
+    <div style="flex:1;">
       <h1>Etiqueta de Preço</h1>
-      <p class="subtitle">Calculadora de revenda de camisas</p>
+      <p class="subtitle" id="statusSync">Calculadora de revenda de camisas</p>
     </div>
+    <button type="button" id="btnTema" class="theme-toggle" onclick="alternarTema()" title="Alternar tema">🌙</button>
+    <button type="button" class="theme-toggle" onclick="abrirGuia()" title="Como usar" style="margin-left:6px;">❓</button>
   </header>
 
   <div id="viewCalc" style="display:none;">
@@ -589,6 +685,31 @@
   </div>
   <div class="hint" style="margin-top:8px; text-align:center;">⚠ custo estimado com base na margem de varejo configurada na seção 03 — não é exato se você vendeu com preços diferentes do sugerido</div>
 
+  <div class="eyebrow">Orçamento mensal</div>
+  <div class="card">
+    <div class="field">
+      <label>Limite de gastos do mês<span class="hint">despesas fixas + contas pagas nos últimos 30 dias</span></label>
+      <div class="input-money"><span class="prefix">R$</span><input type="number" id="orcamentoLimite" min="0" step="0.01" placeholder="0,00" oninput="salvarOrcamento()"></div>
+    </div>
+    <div class="orcamento-barra" style="margin-top:14px;">
+      <div class="orcamento-fill" id="orcamentoFill" style="width:0%;"></div>
+    </div>
+    <div class="hint" id="orcamentoTexto" style="margin-top:8px; text-align:center;"></div>
+  </div>
+
+  <div class="eyebrow">Limite anual MEI</div>
+  <div class="alert-banner" id="dasBanner" style="display:none;"></div>
+  <div class="card">
+    <div class="field">
+      <label>Teto de faturamento anual<span class="hint">padrão MEI: R$ 81.000 — ajuste se mudar</span></label>
+      <div class="input-money"><span class="prefix">R$</span><input type="number" id="meiLimiteAnual" min="0" step="0.01" value="81000" oninput="salvarMeiLimite()"></div>
+    </div>
+    <div class="orcamento-barra" style="margin-top:14px;">
+      <div class="orcamento-fill" id="meiFill" style="width:0%;"></div>
+    </div>
+    <div class="hint" id="meiTexto" style="margin-top:8px; text-align:center;"></div>
+  </div>
+
   <div class="eyebrow">10 — Contas a pagar</div>
   <div class="alert-banner" id="contasVencendoBanner" style="display:none;"></div>
   <div class="card">
@@ -623,7 +744,26 @@
     <div class="bulk-item"><div class="bl">Saldo</div><div class="bv" id="fluxoSaldo">R$ 0</div></div>
   </div>
 
-  <div class="eyebrow">12 — Backup dos dados</div>
+  <div class="eyebrow">12 — Chave Pix da loja</div>
+  <div class="card">
+    <div class="hint" style="margin-bottom:12px;">Preencha uma vez pra gerar cobranças Pix prontas na hora de vender.</div>
+    <div class="field-grid">
+      <div class="field full">
+        <label>Chave Pix</label>
+        <input type="text" id="pixChave" placeholder="CPF, e-mail, telefone ou chave aleatória" oninput="salvarPixConfig()">
+      </div>
+      <div class="field">
+        <label>Nome do recebedor</label>
+        <input type="text" id="pixNome" placeholder="Seu nome ou da loja" oninput="salvarPixConfig()">
+      </div>
+      <div class="field">
+        <label>Cidade</label>
+        <input type="text" id="pixCidade" placeholder="Ex: São Paulo" oninput="salvarPixConfig()">
+      </div>
+    </div>
+  </div>
+
+  <div class="eyebrow">13 — Backup dos dados</div>
   <div class="card" style="padding:16px 18px;">
     <div class="hint" style="margin-bottom:12px;">Seus dados ficam salvos só neste navegador/dispositivo. Baixe um backup de vez em quando pra não perder nada.</div>
     <button class="save-btn" style="width:100%; padding:11px 0; margin-bottom:10px;" onclick="baixarBackup()">⬇️ Baixar backup completo</button>
@@ -631,6 +771,12 @@
       ⬆️ Restaurar backup
       <input type="file" id="arquivoBackup" accept=".json" style="display:none;" onchange="restaurarBackup(event)">
     </label>
+  </div>
+
+  <div class="eyebrow">14 — Exportar pra Excel</div>
+  <div class="card" style="padding:16px 18px;">
+    <div class="hint" style="margin-bottom:12px;">Gera um arquivo .csv que abre direto no Excel ou Google Sheets — útil pra mandar pro contador.</div>
+    <button class="save-btn" style="width:100%; padding:11px 0;" onclick="exportarVendasCSV()">📊 Exportar vendas (.csv)</button>
   </div>
 
   </div>
@@ -647,14 +793,21 @@
       </div>
     </div>
     <div class="alert-banner" id="estoqueAlertBanner" style="display:none;"></div>
+    <div class="alert-banner" id="estoqueParadaBanner" style="display:none; background:#FBF0DD; color:#96690F;"></div>
     <button class="copy-btn" id="btnUltimasPecas" onclick="compartilharUltimasPecas()" style="display:none; margin-bottom:6px;">📲 Compartilhar "últimas peças"</button>
     <button class="copy-btn" onclick="compartilharCatalogo()">📲 Enviar catálogo disponível no WhatsApp</button>
 
-    <div class="eyebrow">Alerta de estoque baixo</div>
+    <div class="eyebrow">Alertas</div>
     <div class="card" style="padding:16px 18px;">
-      <div class="field">
-        <label>Avisar quando a quantidade for menor ou igual a<span class="hint">itens abaixo disso ficam destacados em vermelho</span></label>
-        <input type="number" id="estoqueLimiteAlerta" value="3" min="0" step="1" oninput="salvarLimiteAlerta()">
+      <div class="field-grid">
+        <div class="field">
+          <label>Estoque baixo quando ≤<span class="hint">destaca em vermelho</span></label>
+          <input type="number" id="estoqueLimiteAlerta" value="3" min="0" step="1" oninput="salvarLimiteAlerta()">
+        </div>
+        <div class="field">
+          <label>Peça parada após (dias)<span class="hint">destaca em amarelo</span></label>
+          <input type="number" id="estoqueDiasParada" value="30" min="1" step="1" oninput="salvarDiasParada()">
+        </div>
       </div>
     </div>
 
@@ -670,6 +823,11 @@
           <input type="text" id="estoqueTamanho" placeholder="P, M, 38, único...">
         </div>
         <div class="field">
+          <label>Categoria<span class="hint">opcional — pra filtrar depois</span></label>
+          <input type="text" id="estoqueCategoria" list="categoriasExistentes" placeholder="Ex: Camisas">
+          <datalist id="categoriasExistentes"></datalist>
+        </div>
+        <div class="field">
           <label>Quantidade</label>
           <input type="number" id="estoqueQtd" value="1" min="0" step="1">
         </div>
@@ -677,11 +835,18 @@
           <label>Preço<span class="hint">opcional — só pro catálogo</span></label>
           <div class="input-money"><span class="prefix">R$</span><input type="number" id="estoquePreco" min="0" step="0.01" placeholder="0,00"></div>
         </div>
+        <div class="field full">
+          <label>Foto<span class="hint">opcional</span></label>
+          <input type="file" id="estoqueFoto" accept="image/*" onchange="processarFotoEstoque(event)">
+          <img id="estoqueFotoPreview" style="display:none; margin-top:8px; width:64px; height:64px; object-fit:cover; border-radius:6px; border:1px solid var(--line);">
+        </div>
       </div>
       <button class="save-btn" style="margin-top:14px; width:100%; padding:11px 0;" onclick="adicionarEstoque()">+ Adicionar ao estoque</button>
     </div>
 
     <div class="eyebrow">Itens <span class="sub">(toque + / − pra ajustar rápido)</span></div>
+    <div class="period-tabs" id="categoriaFiltroTabs" style="margin-bottom:12px; flex-wrap:wrap; gap:6px;"></div>
+    <button class="copy-btn" onclick="exportarEstoqueCSV()" style="margin-bottom:12px;">📊 Exportar estoque (.csv)</button>
     <div class="saved-list" id="estoqueList" style="margin-top:0;"></div>
   </div>
 
@@ -720,12 +885,31 @@
         </div>
         <div class="field">
           <label>Forma de pagamento</label>
-          <select id="vendaPagamento">
+          <select id="vendaPagamento" onchange="atualizarTroco()">
             <option value="Dinheiro">Dinheiro</option>
             <option value="Pix">Pix</option>
             <option value="Cartão">Cartão</option>
             <option value="Fiado">Fiado</option>
           </select>
+        </div>
+        <div class="field" id="campoValorRecebido" style="display:none;">
+          <label>Valor recebido<span class="hint">pra calcular o troco</span></label>
+          <div class="input-money"><span class="prefix">R$</span><input type="number" id="vendaValorRecebido" min="0" step="0.01" placeholder="0,00" oninput="atualizarTroco()"></div>
+        </div>
+        <div class="field" id="campoTroco" style="display:none;">
+          <label>Troco</label>
+          <div class="input-money" style="opacity:0.85;"><span class="prefix">R$</span><input type="text" id="vendaTroco" value="0,00" disabled></div>
+        </div>
+        <div class="field full" id="campoBtnPix" style="display:none;">
+          <button type="button" class="copy-btn" onclick="gerarCobrancaPix()" style="width:100%;">🔲 Gerar cobrança Pix</button>
+        </div>
+        <div class="field full" id="areaPix" style="display:none;">
+          <div class="card" style="padding:16px; text-align:center;">
+            <div id="pixQrCode" style="display:flex; justify-content:center; margin-bottom:10px;"></div>
+            <div class="hint" style="margin-bottom:8px;">Peça pra cliente escanear, ou copie o código abaixo</div>
+            <textarea id="pixPayload" readonly style="width:100%; font-family:'Space Mono',monospace; font-size:11px; padding:8px; border:1px solid var(--line); border-radius:4px; resize:none;" rows="3"></textarea>
+            <button type="button" class="save-btn" style="width:100%; margin-top:8px;" onclick="copiarCodigoPix()">📋 Copiar código Pix</button>
+          </div>
         </div>
         <div class="field">
           <label>Cliente<span class="hint">opcional</span></label>
@@ -755,6 +939,7 @@
   <div id="subRelatorios" style="display:none;">
 
     <div class="eyebrow">Período</div>
+    <button class="copy-btn" onclick="imprimirRelatorio()" style="margin-bottom:10px;">🖨️ Imprimir relatório do período</button>
     <div class="period-tabs" id="periodoTabs">
       <button type="button" class="period-pill active" data-periodo="hoje" onclick="mudarPeriodo('hoje')">Hoje</button>
       <button type="button" class="period-pill" data-periodo="7" onclick="mudarPeriodo('7')">7 dias</button>
@@ -820,6 +1005,8 @@
 
 <div class="toast" id="toast"></div>
 
+<div id="printArea"></div>
+
 <nav class="bottom-nav" id="bottomNav">
   <button type="button" class="bottom-nav-btn" id="btnTabCalc" onclick="solicitarAba('calc')">
     <span class="bn-icon">💰</span><span class="bn-label">Preço</span>
@@ -833,10 +1020,58 @@
 </nav>
 
 <script>
-/* ---- camada de armazenamento: usa window.storage aqui no Claude,
-      e cai automaticamente pro localStorage do navegador em qualquer outro lugar (ex: GitHub Pages) ---- */
+/*
+  ÍNDICE DO ARQUIVO (pra achar rápido numa manutenção futura):
+  01. appStorage           — camada de armazenamento (Claude / localStorage)
+  02. calculadora de preço — fmt, calcularPreco, calcular(), benchmark, ancoragem
+  03. produtos salvos      — carregar/salvar/renderizar/editar/remover
+  04. confirmarAcao        — modal de confirmação (substitui confirm() nativo)
+  05. navegação            — mostrarAba, solicitarAba, mostrarSubCalc, mostrarSubVendas
+  06. estoque              — cadastro, foto, categoria, alertas (baixo/parado), catálogo WhatsApp
+  07. despesas fixas       — carregar/salvar/renderizar + resultado do mês
+  08. orçamento mensal     — barra de progresso de gastos
+  09. limite anual MEI     — barra de progresso de faturamento + lembrete DAS
+  10. contas a pagar       — vencimento, alerta, marcar pago
+  11. fluxo de caixa       — entradas x saídas por período
+  12. backup e CSV         — baixar/restaurar .json, exportar vendas/estoque .csv
+  13. Pix                  — payload EMV/BR Code, QR Code, copiar código
+  14. vendas               — registrar/editar/devolver/remover, troco, período, relatórios
+  15. tema (claro/escuro)  — alternarTema, carregarTema
+  16. senha                — abrirTelaSenha, criarSenha, conferirSenha, esqueciSenha
+  17. impressão            — recibo individual e relatório do período
+  18. guia de uso          — abrirGuia, fecharGuia, primeira visita
+  19. inicialização        — chamadas finais ao carregar a página
+*/
+
+/* ---- 01. camada de armazenamento: prioriza o Firebase (sincroniza entre aparelhos),
+      cai pro window.storage aqui no Claude, e por último pro localStorage do navegador ---- */
+const firebaseConfig = {
+  apiKey: "AIzaSyBv4tJSMCyTgbWxGYpObXnxun6S8z_EWFE",
+  authDomain: "etiquetadepreco-af19d.firebaseapp.com",
+  databaseURL: "https://etiquetadepreco-af19d-default-rtdb.firebaseio.com",
+  projectId: "etiquetadepreco-af19d",
+  storageBucket: "etiquetadepreco-af19d.firebasestorage.app",
+  messagingSenderId: "352996758481",
+  appId: "1:352996758481:web:bdbfa3f76518d43b53c6f0"
+};
+
+let firebaseDB = null;
+try {
+  if (typeof firebase !== 'undefined') {
+    firebase.initializeApp(firebaseConfig);
+    firebaseDB = firebase.database();
+  }
+} catch (e) { firebaseDB = null; }
+
 const appStorage = {
   async get(key, shared) {
+    if (firebaseDB) {
+      try {
+        const snap = await firebaseDB.ref('dados/' + key).once('value');
+        const val = snap.val();
+        return (val === null || val === undefined) ? null : { key, value: val, shared: !!shared };
+      } catch (e) { /* cai pro fallback abaixo */ }
+    }
     if (typeof window.storage !== 'undefined' && window.storage && typeof window.storage.get === 'function') {
       try { return await window.storage.get(key, shared); } catch (e) { /* cai pro localStorage abaixo */ }
     }
@@ -846,6 +1081,12 @@ const appStorage = {
     } catch (e) { return null; }
   },
   async set(key, value, shared) {
+    if (firebaseDB) {
+      try {
+        await firebaseDB.ref('dados/' + key).set(value);
+        return { key, value, shared: !!shared };
+      } catch (e) { /* cai pro fallback abaixo */ }
+    }
     if (typeof window.storage !== 'undefined' && window.storage && typeof window.storage.set === 'function') {
       try { return await window.storage.set(key, value, shared); } catch (e) { /* cai pro localStorage abaixo */ }
     }
@@ -1140,6 +1381,115 @@ async function renderizarDespesas() {
 
   const lucroBruto = fatMes - custoEstimado;
   document.getElementById('resultadoSobra').textContent = fmt(lucroBruto - totalDespesas);
+
+  await renderizarOrcamento(totalDespesas);
+}
+
+async function getOrcamentoLimite() {
+  try {
+    const r = await appStorage.get('orcamento-mensal', false);
+    return r ? parseFloat(r.value) : 0;
+  } catch (e) { return 0; }
+}
+
+async function salvarOrcamento() {
+  const valor = parseFloat(document.getElementById('orcamentoLimite').value) || 0;
+  try { await appStorage.set('orcamento-mensal', String(valor), false); } catch (e) { /* ignora */ }
+  renderizarDespesas();
+}
+
+async function renderizarOrcamento(totalDespesasFixas) {
+  const limite = await getOrcamentoLimite();
+  document.getElementById('orcamentoLimite').value = limite || '';
+
+  const contas = await carregarContas();
+  const contasPagasNoMes = contas.filter(c => c.pago && c.dataPagamento && dataDentroDoPeriodo(c.dataPagamento, '30')).reduce((s, c) => s + c.valor, 0);
+  const gastoMes = totalDespesasFixas + contasPagasNoMes;
+
+  const fill = document.getElementById('orcamentoFill');
+  const texto = document.getElementById('orcamentoTexto');
+
+  if (!limite || limite <= 0) {
+    fill.style.width = '0%';
+    fill.className = 'orcamento-fill';
+    texto.textContent = 'Defina um limite acima pra acompanhar o orçamento.';
+    return;
+  }
+
+  const pct = Math.min((gastoMes / limite) * 100, 100);
+  fill.style.width = pct + '%';
+  fill.className = 'orcamento-fill' + (pct >= 100 ? ' estourou' : (pct >= 90 ? ' aviso' : ''));
+  texto.textContent = `${fmt(gastoMes)} de ${fmt(limite)} gastos (${pct.toFixed(0)}%)` + (pct >= 100 ? ' — orçamento estourado!' : (pct >= 90 ? ' — quase no limite!' : ''));
+}
+
+/* ---- limite anual MEI ---- */
+async function getMeiLimite() {
+  try {
+    const r = await appStorage.get('mei-limite-anual', false);
+    return r ? parseFloat(r.value) : 81000;
+  } catch (e) { return 81000; }
+}
+
+async function salvarMeiLimite() {
+  const valor = parseFloat(document.getElementById('meiLimiteAnual').value) || 81000;
+  try { await appStorage.set('mei-limite-anual', String(valor), false); } catch (e) { /* ignora */ }
+  renderizarMei();
+}
+
+async function renderizarMei() {
+  const limite = await getMeiLimite();
+  document.getElementById('meiLimiteAnual').value = limite;
+
+  const vendas = await carregarVendas();
+  const anoAtual = new Date().getFullYear();
+  const fatAno = vendas
+    .filter(v => !v.devolvida && getVendaDate(v).getFullYear() === anoAtual)
+    .reduce((s, v) => s + v.total, 0);
+
+  const fill = document.getElementById('meiFill');
+  const texto = document.getElementById('meiTexto');
+  const pct = limite > 0 ? Math.min((fatAno / limite) * 100, 100) : 0;
+  fill.style.width = pct + '%';
+  fill.className = 'orcamento-fill' + (pct >= 100 ? ' estourou' : (pct >= 85 ? ' aviso' : ''));
+  texto.textContent = `${fmt(fatAno)} de ${fmt(limite)} faturados em ${anoAtual} (${pct.toFixed(0)}%)` + (pct >= 100 ? ' — limite MEI ultrapassado!' : (pct >= 85 ? ' — se aproximando do limite anual' : ''));
+
+  await renderizarLembreteDas();
+}
+
+/* ---- lembrete do DAS ---- */
+async function renderizarLembreteDas() {
+  const hoje = new Date();
+  const chaveMes = `das-pago-${hoje.getFullYear()}-${hoje.getMonth() + 1}`;
+  let jaPago = false;
+  try {
+    const r = await appStorage.get(chaveMes, false);
+    jaPago = r && r.value === '1';
+  } catch (e) { /* ignora */ }
+
+  const banner = document.getElementById('dasBanner');
+  if (jaPago) {
+    banner.style.display = 'none';
+    return;
+  }
+
+  const dia = hoje.getDate();
+  const diaVencimento = 20;
+  banner.style.display = 'block';
+
+  if (dia > diaVencimento) {
+    banner.innerHTML = `⚠ O DAS deste mês vencia dia ${diaVencimento} — já pagou? <a href="#" onclick="marcarDasPago(); return false;" style="text-decoration:underline; font-weight:700;">Marcar como pago</a>`;
+  } else {
+    const faltam = diaVencimento - dia;
+    banner.innerHTML = `📅 O DAS deste mês vence dia ${diaVencimento} (${faltam === 0 ? 'hoje!' : `faltam ${faltam} dia${faltam === 1 ? '' : 's'}`}) — <a href="#" onclick="marcarDasPago(); return false;" style="text-decoration:underline; font-weight:700;">já paguei</a>`;
+  }
+}
+
+async function marcarDasPago() {
+  const hoje = new Date();
+  const chaveMes = `das-pago-${hoje.getFullYear()}-${hoje.getMonth() + 1}`;
+  try { await appStorage.set(chaveMes, '1', false); } catch (e) { /* ignora */ }
+  renderizarLembreteDas();
+  mostrarToast('Marcado! Te lembro de novo mês que vem.');
 }
 
 async function adicionarDespesa() {
@@ -1313,6 +1663,47 @@ async function baixarBackup() {
   mostrarToast('Backup baixado!');
 }
 
+function csvEscape(valor) {
+  const str = String(valor === undefined || valor === null ? '' : valor);
+  if (/[",\n;]/.test(str)) {
+    return '"' + str.replace(/"/g, '""') + '"';
+  }
+  return str;
+}
+
+function baixarCSV(linhas, nomeArquivo) {
+  const conteudo = '\uFEFF' + linhas.map(linha => linha.map(csvEscape).join(';')).join('\r\n');
+  const blob = new Blob([conteudo], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nomeArquivo;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function exportarVendasCSV() {
+  const vendas = await carregarVendas();
+  if (vendas.length === 0) { mostrarToast('Nenhuma venda pra exportar'); return; }
+  const linhas = [['Data', 'Hora', 'Produto', 'Tamanho', 'Quantidade', 'Preço unitário', 'Total', 'Pagamento', 'Cliente', 'Telefone', 'Vendido por', 'Devolvida']];
+  vendas.forEach(v => {
+    linhas.push([v.dataStr, v.horaStr, v.produto, v.tamanho || '', v.qtd, v.preco.toFixed(2), v.total.toFixed(2), v.pagamento || '', v.cliente || '', v.clienteTel || '', v.funcionario || '', v.devolvida ? 'Sim' : 'Não']);
+  });
+  baixarCSV(linhas, `vendas-${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.csv`);
+  mostrarToast('CSV de vendas baixado!');
+}
+
+async function exportarEstoqueCSV() {
+  const itens = await carregarEstoque();
+  if (itens.length === 0) { mostrarToast('Nenhum item pra exportar'); return; }
+  const linhas = [['Produto', 'Tamanho', 'Quantidade', 'Preço', 'Adicionado em']];
+  itens.forEach(it => {
+    linhas.push([it.produto, it.tamanho || '', it.qtd, it.preco ? it.preco.toFixed(2) : '', it.adicionadoEm ? new Date(it.adicionadoEm).toLocaleDateString('pt-BR') : '']);
+  });
+  baixarCSV(linhas, `estoque-${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.csv`);
+  mostrarToast('CSV de estoque baixado!');
+}
+
 async function restaurarBackup(evento) {
   const arquivo = evento.target.files[0];
   if (!arquivo) return;
@@ -1438,7 +1829,7 @@ function mostrarAba(aba) {
   document.getElementById('btnTabVendas').classList.toggle('active', aba === 'vendas');
   if (aba === 'estoque') renderizarEstoque();
   if (aba === 'vendas') { renderizarVendas(); popularSugestoesProdutos(); }
-  if (aba === 'calc') { renderizarDespesas(); renderizarContas(); renderizarFluxoCaixa(); }
+  if (aba === 'calc') { renderizarDespesas(); renderizarContas(); renderizarFluxoCaixa(); renderizarPixConfig(); renderizarMei(); }
 }
 
 function mostrarSubCalc(sub) {
@@ -1485,6 +1876,28 @@ async function salvarLimiteAlerta() {
   renderizarEstoque();
 }
 
+async function getDiasParada() {
+  try {
+    const result = await appStorage.get('estoque-dias-parada', false);
+    return result ? parseInt(result.value) : 30;
+  } catch (e) { return 30; }
+}
+
+async function salvarDiasParada() {
+  const valor = parseInt(document.getElementById('estoqueDiasParada').value) || 30;
+  try {
+    await appStorage.set('estoque-dias-parada', String(valor), false);
+  } catch (e) { /* ignora */ }
+  renderizarEstoque();
+}
+
+let categoriaFiltroAtual = 'todas';
+
+function filtrarCategoria(cat) {
+  categoriaFiltroAtual = cat;
+  renderizarEstoque();
+}
+
 async function renderizarEstoque() {
   const itens = await carregarEstoque();
   const total = itens.reduce((soma, it) => soma + it.qtd, 0);
@@ -1492,6 +1905,19 @@ async function renderizarEstoque() {
 
   const limite = await getLimiteAlerta();
   document.getElementById('estoqueLimiteAlerta').value = limite;
+  const diasParadaLimite = await getDiasParada();
+  document.getElementById('estoqueDiasParada').value = diasParadaLimite;
+
+  const vendas = await carregarVendas();
+  const agora = Date.now();
+
+  function diasSemVender(it) {
+    const vendasDoItem = vendas.filter(v => !v.devolvida && v.produto.toLowerCase() === it.produto.toLowerCase() && (v.tamanho || '').toLowerCase() === (it.tamanho || '').toLowerCase());
+    const referencia = vendasDoItem.length > 0
+      ? Math.max(...vendasDoItem.map(v => v.timestamp || 0))
+      : (it.adicionadoEm || agora);
+    return Math.floor((agora - referencia) / (1000 * 60 * 60 * 24));
+  }
 
   const baixos = itens.filter(it => it.qtd > 0 && it.qtd <= limite);
   const banner = document.getElementById('estoqueAlertBanner');
@@ -1505,25 +1931,64 @@ async function renderizarEstoque() {
     btnUltimas.style.display = 'none';
   }
 
+  const paradas = itens.filter(it => it.qtd > 0 && diasSemVender(it) >= diasParadaLimite);
+  const bannerParada = document.getElementById('estoqueParadaBanner');
+  if (paradas.length > 0) {
+    bannerParada.style.display = 'block';
+    bannerParada.textContent = `🐌 ${paradas.length} item${paradas.length === 1 ? '' : 's'} parado${paradas.length === 1 ? '' : 's'} há ${diasParadaLimite}+ dias — considere uma promoção (${paradas.slice(0, 3).map(it => it.produto + (it.tamanho ? ' ' + it.tamanho : '')).join(', ')}${paradas.length > 3 ? '...' : ''})`;
+  } else {
+    bannerParada.style.display = 'none';
+  }
+
+  // pills de categoria
+  const categorias = [...new Set(itens.map(it => it.categoria).filter(Boolean))].sort();
+  const categoriaTabsEl = document.getElementById('categoriaFiltroTabs');
+  if (categorias.length === 0) {
+    categoriaTabsEl.innerHTML = '';
+  } else {
+    if (!categorias.includes(categoriaFiltroAtual) && categoriaFiltroAtual !== 'todas') categoriaFiltroAtual = 'todas';
+    const pills = ['todas', ...categorias];
+    categoriaTabsEl.innerHTML = pills.map(cat => `
+      <button type="button" class="period-pill${cat === categoriaFiltroAtual ? ' active' : ''}" style="flex:none; padding:6px 14px;" onclick="filtrarCategoria('${cat.replace(/'/g, "\\'")}')">${cat === 'todas' ? 'Todas' : cat}</button>
+    `).join('');
+  }
+  // datalist de sugestões de categoria pro campo de cadastro
+  document.getElementById('categoriasExistentes').innerHTML = categorias.map(c => `<option value="${c}">`).join('');
+
+  const itensComIndice = itens.map((it, i) => ({ ...it, _idx: i }));
+  const itensFiltrados = categoriaFiltroAtual === 'todas' ? itensComIndice : itensComIndice.filter(it => it.categoria === categoriaFiltroAtual);
+
   const container = document.getElementById('estoqueList');
   if (itens.length === 0) {
     container.innerHTML = '<div class="empty-note">Nenhuma peça cadastrada ainda.</div>';
     return;
   }
-  container.innerHTML = itens.map((it, i) => `
-    <div class="estoque-item${it.qtd <= limite ? ' low-stock' : ''}">
-      <div>
-        <div class="ei-name">${it.produto}${it.tamanho ? ' — ' + it.tamanho : ''}</div>
-        <div class="ei-sub">${it.qtd} peça${it.qtd === 1 ? '' : 's'}${it.preco ? ' · ' + fmt(it.preco) : ''}${it.qtd <= limite ? ' · baixo!' : ''}</div>
+  if (itensFiltrados.length === 0) {
+    container.innerHTML = '<div class="empty-note">Nenhum item nessa categoria.</div>';
+    return;
+  }
+  container.innerHTML = itensFiltrados.map(it => {
+    const dias = diasSemVender(it);
+    const estaParada = it.qtd > 0 && dias >= diasParadaLimite;
+    const classes = [it.qtd <= limite ? 'low-stock' : '', estaParada ? 'parada' : ''].filter(Boolean).join(' ');
+    return `
+    <div class="estoque-item${classes ? ' ' + classes : ''}">
+      <div class="ei-info">
+        ${it.foto ? `<img class="ei-thumb" src="${it.foto}" alt="">` : ''}
+        <div>
+          <div class="ei-name">${it.produto}${it.tamanho ? ' — ' + it.tamanho : ''}${it.categoria ? ` <span style="opacity:0.45; font-weight:400;">· ${it.categoria}</span>` : ''}</div>
+          <div class="ei-sub">${it.qtd} peça${it.qtd === 1 ? '' : 's'}${it.preco ? ' · ' + fmt(it.preco) : ''}${it.qtd <= limite ? ' · baixo!' : ''}${estaParada ? ` · parada há ${dias}d` : ''}</div>
+        </div>
       </div>
       <div class="estoque-controls">
-        <button class="qty-btn" onclick="ajustarEstoque(${i}, -1)">−</button>
+        <button class="qty-btn" onclick="ajustarEstoque(${it._idx}, -1)">−</button>
         <span class="qty-value">${it.qtd}</span>
-        <button class="qty-btn" onclick="ajustarEstoque(${i}, 1)">+</button>
-        <button class="del-btn" onclick="removerEstoque(${i})">✕</button>
+        <button class="qty-btn" onclick="ajustarEstoque(${it._idx}, 1)">+</button>
+        <button class="del-btn" onclick="removerEstoque(${it._idx})">✕</button>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function compartilharCatalogo() {
@@ -1560,10 +2025,38 @@ function compartilharUltimasPecas() {
   });
 }
 
+let fotoEstoqueSelecionada = null;
+
+function processarFotoEstoque(evento) {
+  const arquivo = evento.target.files[0];
+  if (!arquivo) return;
+
+  const leitor = new FileReader();
+  leitor.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const maxLado = 240;
+      let w = img.width, h = img.height;
+      if (w > h && w > maxLado) { h = h * (maxLado / w); w = maxLado; }
+      else if (h > maxLado) { w = w * (maxLado / h); h = maxLado; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      fotoEstoqueSelecionada = canvas.toDataURL('image/jpeg', 0.6);
+      const preview = document.getElementById('estoqueFotoPreview');
+      preview.src = fotoEstoqueSelecionada;
+      preview.style.display = 'block';
+    };
+    img.src = e.target.result;
+  };
+  leitor.readAsDataURL(arquivo);
+}
+
 async function adicionarEstoque() {
   const produtoInput = document.getElementById('estoqueProduto');
   const produto = produtoInput.value.trim();
   const tamanho = document.getElementById('estoqueTamanho').value.trim();
+  const categoria = document.getElementById('estoqueCategoria').value.trim();
   const qtd = parseInt(document.getElementById('estoqueQtd').value) || 0;
   const preco = parseFloat(document.getElementById('estoquePreco').value) || 0;
   if (!produto) { produtoInput.focus(); return; }
@@ -1573,14 +2066,20 @@ async function adicionarEstoque() {
   if (existente) {
     existente.qtd += qtd;
     if (preco > 0) existente.preco = preco;
+    if (fotoEstoqueSelecionada) existente.foto = fotoEstoqueSelecionada;
+    if (categoria) existente.categoria = categoria;
   } else {
-    itens.unshift({ produto, tamanho, qtd, preco: preco > 0 ? preco : undefined });
+    itens.unshift({ produto, tamanho, qtd, preco: preco > 0 ? preco : undefined, foto: fotoEstoqueSelecionada || undefined, categoria: categoria || undefined, adicionadoEm: Date.now() });
   }
   await salvarEstoque(itens);
   produtoInput.value = '';
   document.getElementById('estoqueTamanho').value = '';
+  document.getElementById('estoqueCategoria').value = '';
   document.getElementById('estoqueQtd').value = 1;
   document.getElementById('estoquePreco').value = '';
+  document.getElementById('estoqueFoto').value = '';
+  document.getElementById('estoqueFotoPreview').style.display = 'none';
+  fotoEstoqueSelecionada = null;
   renderizarEstoque();
   mostrarToast('Adicionado ao estoque!');
 }
@@ -1609,6 +2108,129 @@ function atualizarTotalVenda() {
   const qtd = parseInt(document.getElementById('vendaQtd').value) || 0;
   const preco = parseFloat(document.getElementById('vendaPreco').value) || 0;
   document.getElementById('vendaTotal').value = (qtd * preco).toFixed(2);
+  atualizarTroco();
+}
+
+function atualizarTroco() {
+  const pagamento = document.getElementById('vendaPagamento').value;
+  const campoValor = document.getElementById('campoValorRecebido');
+  const campoTroco = document.getElementById('campoTroco');
+  const campoBtnPix = document.getElementById('campoBtnPix');
+  const areaPix = document.getElementById('areaPix');
+
+  campoBtnPix.style.display = pagamento === 'Pix' ? 'block' : 'none';
+  if (pagamento !== 'Pix') areaPix.style.display = 'none';
+
+  if (pagamento !== 'Dinheiro') {
+    campoValor.style.display = 'none';
+    campoTroco.style.display = 'none';
+    return;
+  }
+  campoValor.style.display = 'flex';
+  campoTroco.style.display = 'flex';
+
+  const total = parseFloat(document.getElementById('vendaTotal').value) || 0;
+  const recebido = parseFloat(document.getElementById('vendaValorRecebido').value) || 0;
+  const troco = recebido - total;
+  document.getElementById('vendaTroco').value = fmt(troco).replace('R$', '').trim();
+  document.getElementById('vendaTroco').style.color = troco < 0 ? 'var(--thread)' : 'var(--good)';
+}
+
+/* ---- Pix (BR Code / EMV) ---- */
+async function carregarPixConfig() {
+  try {
+    const r = await appStorage.get('pix-config', false);
+    return r ? JSON.parse(r.value) : { chave: '', nome: '', cidade: '' };
+  } catch (e) { return { chave: '', nome: '', cidade: '' }; }
+}
+
+async function salvarPixConfig() {
+  const config = {
+    chave: document.getElementById('pixChave').value.trim(),
+    nome: document.getElementById('pixNome').value.trim(),
+    cidade: document.getElementById('pixCidade').value.trim()
+  };
+  try { await appStorage.set('pix-config', JSON.stringify(config), false); } catch (e) { /* ignora */ }
+}
+
+async function renderizarPixConfig() {
+  const config = await carregarPixConfig();
+  document.getElementById('pixChave').value = config.chave || '';
+  document.getElementById('pixNome').value = config.nome || '';
+  document.getElementById('pixCidade').value = config.cidade || '';
+}
+
+function removerAcentosPix(str) {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function tlvPix(id, value) {
+  return id + String(value.length).padStart(2, '0') + value;
+}
+
+function crc16Pix(str) {
+  let crc = 0xFFFF;
+  for (let i = 0; i < str.length; i++) {
+    crc ^= (str.charCodeAt(i) << 8);
+    for (let j = 0; j < 8; j++) {
+      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+
+function gerarPayloadPix(chave, nome, cidade, valor) {
+  nome = removerAcentosPix(nome || 'LOJA').toUpperCase().slice(0, 25);
+  cidade = removerAcentosPix(cidade || 'BRASIL').toUpperCase().slice(0, 15);
+
+  const merchantInfo = tlvPix('00', 'br.gov.bcb.pix') + tlvPix('01', chave);
+  let payload = '';
+  payload += tlvPix('00', '01');
+  payload += tlvPix('01', '11');
+  payload += tlvPix('26', merchantInfo);
+  payload += tlvPix('52', '0000');
+  payload += tlvPix('53', '986');
+  if (valor && valor > 0) payload += tlvPix('54', valor.toFixed(2));
+  payload += tlvPix('58', 'BR');
+  payload += tlvPix('59', nome);
+  payload += tlvPix('60', cidade);
+  payload += tlvPix('62', tlvPix('05', '***'));
+  payload += '6304';
+  return payload + crc16Pix(payload);
+}
+
+async function gerarCobrancaPix() {
+  const config = await carregarPixConfig();
+  if (!config.chave) {
+    mostrarToast('Cadastre sua chave Pix em Preço → Financeiro primeiro');
+    return;
+  }
+  const total = parseFloat(document.getElementById('vendaTotal').value) || 0;
+  if (total <= 0) {
+    mostrarToast('Preencha quantidade e preço primeiro');
+    return;
+  }
+  const payload = gerarPayloadPix(config.chave, config.nome, config.cidade, total);
+  document.getElementById('pixPayload').value = payload;
+
+  const qrContainer = document.getElementById('pixQrCode');
+  qrContainer.innerHTML = '';
+  try {
+    if (typeof QRCode !== 'undefined') {
+      new QRCode(qrContainer, { text: payload, width: 180, height: 180 });
+    }
+  } catch (e) { /* se a lib não carregar, ainda sobra o código pra copiar */ }
+
+  document.getElementById('areaPix').style.display = 'block';
+}
+
+function copiarCodigoPix() {
+  const texto = document.getElementById('pixPayload').value;
+  navigator.clipboard.writeText(texto).then(() => {
+    mostrarToast('Código Pix copiado!');
+  }).catch(() => {
+    mostrarToast('Não foi possível copiar');
+  });
 }
 
 async function popularSugestoesProdutos() {
@@ -1772,6 +2394,7 @@ async function renderizarVendas() {
         <span class="si-price">${fmt(v.total)}</span>
         ${v.devolvida ? '' : `<button class="whats-btn" onclick="editarVenda(${v._idx})" title="Editar venda">✎</button>
         <button class="whats-btn" onclick="compartilharVenda(${v._idx})" title="Enviar comprovante no WhatsApp">📲</button>
+        <button class="whats-btn" onclick="imprimirRecibo(${v._idx})" title="Imprimir recibo">🖨️</button>
         <button class="whats-btn" onclick="devolverVenda(${v._idx})" title="Registrar devolução">↩</button>`}
         <button class="del-btn" onclick="removerVenda(${v._idx})">✕</button>
       </div>
@@ -1878,6 +2501,77 @@ function compartilharVenda(index) {
     msg += `Obrigado pela preferência! 💚`;
     window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
   });
+}
+
+/* ---- impressão ---- */
+async function imprimirRecibo(index) {
+  const vendas = await carregarVendas();
+  const v = vendas[index];
+  if (!v) return;
+  const config = await carregarPixConfig();
+  const nomeLoja = config.nome || 'Etiqueta de Preço';
+
+  const html = `
+    <div class="print-receipt">
+      <h2>${nomeLoja}</h2>
+      <div style="text-align:center; font-size:12px; margin-bottom:10px;">${v.dataStr} às ${v.horaStr}</div>
+      <hr>
+      <div class="pr-line"><span>${v.produto}${v.tamanho ? ' — ' + v.tamanho : ''} ×${v.qtd}</span><span>${fmt(v.total)}</span></div>
+      <div class="pr-line"><span>Valor unitário</span><span>${fmt(v.preco)}</span></div>
+      ${v.pagamento ? `<div class="pr-line"><span>Pagamento</span><span>${v.pagamento}</span></div>` : ''}
+      ${v.cliente ? `<div class="pr-line"><span>Cliente</span><span>${v.cliente}</span></div>` : ''}
+      ${v.funcionario ? `<div class="pr-line"><span>Vendido por</span><span>${v.funcionario}</span></div>` : ''}
+      <hr>
+      <div class="pr-line pr-total"><span>Total</span><span>${fmt(v.total)}</span></div>
+      <div style="text-align:center; font-size:12px; margin-top:14px;">Obrigado pela preferência!</div>
+    </div>
+  `;
+  document.getElementById('printArea').innerHTML = html;
+  window.print();
+}
+
+async function imprimirRelatorio() {
+  const vendas = await carregarVendas();
+  const comIndice = vendas.map((v, i) => ({ ...v, _idx: i }));
+  const doPeriodo = comIndice.filter(v => vendaNoPeriodo(v, periodoAtual) && !v.devolvida);
+
+  const fatPeriodo = doPeriodo.reduce((s, v) => s + v.total, 0);
+  const qtdPeriodo = doPeriodo.reduce((s, v) => s + v.qtd, 0);
+
+  const porProduto = {};
+  doPeriodo.forEach(v => {
+    const chave = v.produto + (v.tamanho ? ' ' + v.tamanho : '');
+    if (!porProduto[chave]) porProduto[chave] = { qtd: 0, total: 0 };
+    porProduto[chave].qtd += v.qtd;
+    porProduto[chave].total += v.total;
+  });
+  const ranking = Object.entries(porProduto).sort((a, b) => b[1].qtd - a[1].qtd);
+
+  const rotuloPeriodo = { hoje: 'Hoje', '7': 'Últimos 7 dias', '30': 'Últimos 30 dias', tudo: 'Todo o período' }[periodoAtual] || periodoAtual;
+
+  let html = `
+    <div class="print-report">
+      <h2>Relatório de vendas — ${rotuloPeriodo}</h2>
+      <p>Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+      <p><strong>Faturamento:</strong> ${fmt(fatPeriodo)} — <strong>Peças vendidas:</strong> ${qtdPeriodo}</p>
+      <h3>Produtos vendidos</h3>
+      <table>
+        <thead><tr><th>Produto</th><th>Unidades</th><th>Faturado</th></tr></thead>
+        <tbody>
+          ${ranking.map(([nome, d]) => `<tr><td>${nome}</td><td>${d.qtd}</td><td>${fmt(d.total)}</td></tr>`).join('') || '<tr><td colspan="3">Sem vendas no período</td></tr>'}
+        </tbody>
+      </table>
+      <h3>Vendas detalhadas</h3>
+      <table>
+        <thead><tr><th>Data</th><th>Produto</th><th>Qtd</th><th>Total</th><th>Pagamento</th></tr></thead>
+        <tbody>
+          ${doPeriodo.map(v => `<tr><td>${v.dataStr} ${v.horaStr}</td><td>${v.produto}${v.tamanho ? ' ' + v.tamanho : ''}</td><td>${v.qtd}</td><td>${fmt(v.total)}</td><td>${v.pagamento || ''}</td></tr>`).join('') || '<tr><td colspan="5">Sem vendas no período</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById('printArea').innerHTML = html;
+  window.print();
 }
 
 async function enviarResumoHoje() {
@@ -1988,10 +2682,12 @@ async function registrarVenda() {
   document.getElementById('vendaPreco').value = '';
   document.getElementById('vendaTotal').value = '0.00';
   document.getElementById('vendaPagamento').value = 'Dinheiro';
+  document.getElementById('vendaValorRecebido').value = '';
   document.getElementById('vendaCliente').value = '';
   document.getElementById('vendaClienteTel').value = '';
   document.getElementById('vendaFuncionario').value = '';
   document.getElementById('vendaEstoqueHint').textContent = '';
+  atualizarTroco();
 
   const eraEdicao = vendaEditIndex !== null;
   cancelarEdicaoVenda();
@@ -2121,10 +2817,66 @@ async function esqueciSenha() {
   abrirTelaSenha();
 }
 
+/* ---- tema ---- */
+async function alternarTema() {
+  const escuro = !document.body.classList.contains('dark');
+  document.body.classList.toggle('dark', escuro);
+  document.getElementById('btnTema').textContent = escuro ? '☀️' : '🌙';
+  try { await appStorage.set('tema-escuro', escuro ? '1' : '0', false); } catch (e) { /* ignora */ }
+}
+
+async function carregarTema() {
+  try {
+    const r = await appStorage.get('tema-escuro', false);
+    if (r && r.value === '1') {
+      document.body.classList.add('dark');
+      document.getElementById('btnTema').textContent = '☀️';
+    }
+  } catch (e) { /* ignora */ }
+}
+
+/* ---- guia de uso ---- */
+function abrirGuia() {
+  document.getElementById('guiaScreen').style.display = 'flex';
+}
+function fecharGuia() {
+  document.getElementById('guiaScreen').style.display = 'none';
+}
+async function mostrarGuiaPrimeiraVez() {
+  try {
+    const r = await appStorage.get('guia-ja-visto', false);
+    if (!r) {
+      abrirGuia();
+      await appStorage.set('guia-ja-visto', '1', false);
+    }
+  } catch (e) { /* ignora */ }
+}
+
 mostrarAba('vendas');
+atualizarTroco();
+carregarTema();
+mostrarGuiaPrimeiraVez();
+verificarStatusSync();
 
 calcular();
 renderizarLista();
+
+async function verificarStatusSync() {
+  const el = document.getElementById('statusSync');
+  if (!firebaseDB) {
+    el.textContent = '📴 Salvando só neste aparelho';
+    el.style.color = 'var(--khaki)';
+    return;
+  }
+  try {
+    await firebaseDB.ref('dados/_teste-conexao').set(Date.now());
+    el.textContent = '☁️ Sincronizado — mesmos dados em qualquer aparelho';
+    el.style.color = 'var(--good)';
+  } catch (e) {
+    el.textContent = '⚠ Não conectou à nuvem agora — salvando só aqui';
+    el.style.color = 'var(--thread)';
+  }
+}
 </script>
 </body>
 </html>
