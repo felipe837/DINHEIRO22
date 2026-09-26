@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Livro-Razão — Dívidas e Metas</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Livro-Razão">
+<meta name="theme-color" content="#171F1B">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%23171F1B'/%3E%3Ctext x='90' y='116' font-size='84' text-anchor='middle' font-family='Georgia,serif' fill='%23C9A24B'%3ELR%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#171F1B; --bg2:#1E2823; --line:#33403A;
+  --ink:#EDEAE1; --ink-dim:#A9B3AC;
+  --gold:#C9A24B; --gold-dim:#8A7238;
+  --debt:#B5533C; --debt-bg:rgba(181,83,60,0.14);
+  --goal:#3E8E7E; --goal-bg:rgba(62,142,126,0.14);
+  --radius:3px;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#F4F0E6; --bg2:#FFFFFF; --line:#DAD3C2;
+    --ink:#1D2420; --ink-dim:#5C685F;
+    --gold:#9A7A2C; --gold-dim:#C9A24B;
+    --debt-bg:rgba(181,83,60,0.10); --goal-bg:rgba(62,142,126,0.10);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#F4F0E6; --bg2:#FFFFFF; --line:#DAD3C2;
+  --ink:#1D2420; --ink-dim:#5C685F;
+  --gold:#9A7A2C; --gold-dim:#C9A24B;
+  --debt-bg:rgba(181,83,60,0.10); --goal-bg:rgba(62,142,126,0.10);
+}
+*{box-sizing:border-box;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+html,body{height:100%;}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:'Work Sans',sans-serif; font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:'Spectral',serif; font-weight:600; margin:0;}
+.wrap{max-width:760px; margin:0 auto; padding:28px 20px 60px;}
+header{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; flex-wrap:wrap; gap:8px;}
+header h1{font-size:26px; letter-spacing:0.2px;}
+header .sub{color:var(--ink-dim); font-size:13px;}
+nav{display:flex; gap:0; margin:26px 0 22px; border-bottom:1px solid var(--line);}
+nav button{
+  background:none; border:none; color:var(--ink-dim); font-family:'Work Sans',sans-serif;
+  font-size:14px; padding:10px 4px; margin-right:26px; cursor:pointer;
+  border-bottom:2px solid transparent; transition:color .15s, border-color .15s;
+}
+nav button.active{color:var(--ink); border-bottom-color:var(--gold);}
+section{display:none;}
+section.active{display:block;}
+
+.card{
+  background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius);
+  padding:16px 18px; margin-bottom:12px;
+}
+.item-head{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+.item-name{font-family:'Spectral',serif; font-size:17px; font-weight:600;}
+.item-meta{color:var(--ink-dim); font-size:12.5px; margin-top:2px;}
+.tag{display:inline-block; font-size:11px; padding:2px 8px; border-radius:10px; margin-top:6px;}
+.tag.debt{background:var(--debt-bg); color:var(--debt);}
+.tag.goal{background:var(--goal-bg); color:var(--goal);}
+.amt{font-family:'Spectral',serif; font-size:17px; text-align:right; white-space:nowrap;}
+.amt small{display:block; color:var(--ink-dim); font-size:11px; font-family:'Work Sans',sans-serif;}
+.bar{height:6px; background:var(--line); border-radius:4px; margin-top:12px; overflow:hidden;}
+.bar > div{height:100%; border-radius:4px;}
+.bar.debt-bar > div{background:var(--debt);}
+.bar.goal-bar > div{background:var(--goal);}
+.row-foot{display:flex; justify-content:space-between; margin-top:8px; font-size:12.5px; color:var(--ink-dim);}
+.del{background:none; border:none; color:var(--ink-dim); cursor:pointer; font-size:12px; text-decoration:underline; padding:0;}
+.del:hover{color:var(--debt);}
+
+.empty{color:var(--ink-dim); font-size:14px; padding:30px 0; text-align:center; border:1px dashed var(--line); border-radius:var(--radius);}
+
+form.entry{background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; margin-bottom:22px;}
+form.entry h3{font-size:14px; color:var(--ink-dim); font-weight:500; margin-bottom:12px; font-family:'Work Sans',sans-serif;}
+.grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.grid .full{grid-column:1/-1;}
+label{display:block; font-size:11.5px; color:var(--ink-dim); margin-bottom:4px;}
+input,select{
+  width:100%; background:var(--bg); border:1px solid var(--line); color:var(--ink);
+  border-radius:var(--radius); padding:8px 9px; font-family:'Work Sans',sans-serif; font-size:14px;
+}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--gold); outline-offset:1px;}
+.addbtn{
+  margin-top:12px; width:100%; background:var(--gold); color:#1A1A14; border:none;
+  border-radius:var(--radius); padding:10px; font-weight:600; font-size:14px; cursor:pointer;
+  font-family:'Work Sans',sans-serif;
+}
+.addbtn:hover{background:var(--gold-dim);}
+
+.stats{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;}
+.stat{background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px;}
+.stat .n{font-family:'Spectral',serif; font-size:24px;}
+.stat .l{color:var(--ink-dim); font-size:12px; margin-top:2px;}
+.chartbox{background:var(--bg2); border:1px solid var(--line); border-radius:var(--radius); padding:18px; margin-bottom:16px;}
+.chartbox h3{font-size:13px; color:var(--ink-dim); font-weight:500; margin-bottom:14px; font-family:'Work Sans',sans-serif;}
+.chartbox canvas{max-height:220px;}
+
+@keyframes fadeInUp{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:translateY(0);} }
+@keyframes pulseGlow{ 0%{ box-shadow:0 0 0 0 rgba(201,162,75,0.4);} 100%{ box-shadow:0 0 0 8px rgba(201,162,75,0);} }
+.card{ animation:fadeInUp .35s ease both; transition:transform .15s ease, border-color .15s ease; }
+.card:hover{ transform:translateY(-2px); border-color:var(--gold-dim); }
+.stat{ transition:transform .15s ease; }
+.stat.pulse{ animation:pulseGlow .5s ease; }
+.bar > div{ transition:width .7s cubic-bezier(.22,.9,.35,1); }
+.addbtn{ transition:transform .12s ease, background .15s ease; }
+.addbtn:active{ transform:scale(0.97); }
+nav button{ transition:color .15s ease, border-color .2s ease; }
+section.active{ animation:fadeInUp .25s ease both; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Livro-Razão</h1>
+    <div class="sub">dívidas, parcelas e metas de economia</div>
+    <div class="sub" id="cloud-status" style="width:100%;">salvando neste navegador (modo local)</div>
+    <button id="btn-export" class="del" style="font-size:12px;">exportar dados (.csv)</button>
+    <button id="btn-install" class="del" style="font-size:12px;">📲 instalar no iPhone</button>
+  </header>
+
+  <div id="install-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:50; align-items:flex-end; justify-content:center;">
+    <div class="card" style="max-width:420px; width:100%; margin:0 0 0 0; border-radius:var(--radius) var(--radius) 0 0; animation:fadeInUp .25s ease both;">
+      <div class="item-name" style="margin-bottom:10px;">Instalar no iPhone</div>
+      <div id="install-steps" style="font-size:14px; color:var(--ink-dim); line-height:1.7;"></div>
+      <button class="addbtn" id="install-close" type="button">Entendi</button>
+    </div>
+  </div>
+
+  <nav>
+    <button class="tab-btn active" data-tab="resumo">Resumo</button>
+    <button class="tab-btn" data-tab="fluxo">Fluxo de Caixa</button>
+    <button class="tab-btn" data-tab="contas">Contas</button>
+    <button class="tab-btn" data-tab="emprestimos">Empréstimos</button>
+    <button class="tab-btn" data-tab="dividas">Dívidas</button>
+    <button class="tab-btn" data-tab="metas">Metas</button>
+  </nav>
+
+  <section id="resumo" class="active">
+    <div class="card" id="saldo-card" style="border-color:var(--gold);">
+      <div class="item-head">
+        <div>
+          <div class="item-name">Saldo em conta agora</div>
+          <div class="item-meta">quanto você tem disponível hoje, de verdade</div>
+        </div>
+      </div>
+      <div class="grid" style="margin-top:10px; grid-template-columns:1fr auto;">
+        <div><input type="number" step="0.01" id="sc-valor" placeholder="1200"></div>
+        <div style="align-self:center;"><button class="addbtn" id="sc-salvar" type="button" style="margin-top:0; white-space:nowrap; padding:8px 16px;">Salvar</button></div>
+      </div>
+    </div>
+    <div class="card" id="renda-card" style="border-color:var(--goal);">
+      <div class="item-name" style="margin-bottom:4px;">Minha renda</div>
+      <div class="item-meta" style="margin-bottom:14px;">quanto você ganha por mês e a projeção do ano</div>
+      <div class="grid">
+        <div><label>Salário mensal (R$)</label><input type="number" step="0.01" id="rd-salario" placeholder="3000"></div>
+        <div><label>Outra renda mensal (R$)</label><input type="number" step="0.01" id="rd-extra" placeholder="0" value="0"></div>
+      </div>
+      <div class="row-foot" style="margin-top:10px; justify-content:flex-start; gap:6px;">
+        <input type="checkbox" id="rd-decimo" style="width:auto;"> <label for="rd-decimo" style="margin:0; cursor:pointer;">considerar 13º salário + 1/3 de férias</label>
+      </div>
+      <div class="row-foot" style="margin-top:6px; color:var(--ink-dim);">isso aqui é uma estimativa — se o valor que você recebe varia (banco de horas, faltas...), atualize este campo sempre que mudar</div>
+      <div class="card" style="background:var(--bg); margin-top:12px; margin-bottom:0;">
+        <div class="item-head">
+          <div>
+            <div class="item-meta">renda mensal estimada</div>
+            <div class="item-name" id="rd-mensal">R$ 0,00</div>
+          </div>
+          <div class="amt" style="color:var(--goal);" id="rd-anual">R$ 0<small>projeção do ano</small></div>
+        </div>
+      </div>
+      <div class="row-foot" style="margin-top:8px;">
+        <span>recebido de verdade este ano: <span id="rd-realizado" style="color:var(--ink);">R$ 0</span></span>
+      </div>
+      <div class="grid" style="margin-top:12px; grid-template-columns:1fr auto;">
+        <div><label>Quanto você recebeu esse mês (R$)</label><input type="number" step="0.01" id="rd-mes-valor" placeholder="2800"></div>
+        <div style="align-self:flex-end;"><button class="addbtn" id="rd-mes-lancar" type="button" style="margin-top:0; white-space:nowrap; padding:8px 16px;">Lançar</button></div>
+      </div>
+      <div class="row-foot" style="margin-top:6px;" id="rd-mes-status"></div>
+    </div>
+    <div class="stats" style="grid-template-columns:repeat(2,1fr);">
+      <div class="stat"><div class="n" id="stat-saldoconta">R$ 0</div><div class="l">saldo em conta</div></div>
+      <div class="stat"><div class="n" id="stat-patrimonio">R$ 0</div><div class="l">patrimônio (guardado − dívidas)</div></div>
+      <div class="stat"><div class="n" id="stat-saldo">R$ 0</div><div class="l">saldo do mês</div></div>
+      <div class="stat"><div class="n" id="stat-debt">R$ 0</div><div class="l">restante em dívidas</div></div>
+      <div class="stat"><div class="n" id="stat-reserva">0%</div><div class="l">reserva de emergência</div></div>
+      <div class="stat"><div class="n" id="stat-goal">R$ 0</div><div class="l">guardado em metas</div></div>
+    </div>
+    <div class="chartbox">
+      <h3>Despesas do mês por categoria</h3>
+      <canvas id="chartGastos"></canvas>
+      <div class="empty" id="chartGastosEmpty" style="display:none;">Nenhuma despesa lançada este mês</div>
+    </div>
+    <div class="chartbox">
+      <h3>Dívidas por categoria</h3>
+      <canvas id="chartDebt"></canvas>
+      <div class="empty" id="chartDebtEmpty" style="display:none;">Nenhuma dívida cadastrada ainda</div>
+    </div>
+    <div class="chartbox">
+      <h3>Progresso das metas</h3>
+      <canvas id="chartGoal"></canvas>
+      <div class="empty" id="chartGoalEmpty" style="display:none;">Nenhuma meta cadastrada ainda</div>
+    </div>
+  </section>
+
+  <section id="fluxo">
+    <div class="stats">
+      <div class="stat"><div class="n" id="fx-receitas">R$ 0</div><div class="l">receitas do mês</div></div>
+      <div class="stat"><div class="n" id="fx-despesas">R$ 0</div><div class="l">despesas do mês</div></div>
+    </div>
+
+    <form class="entry" id="form-txn">
+      <h3>Novo lançamento</h3>
+      <div class="grid">
+        <div><label>Tipo</label>
+          <select id="t-tipo">
+            <option value="despesa">Despesa</option>
+            <option value="receita">Receita</option>
+          </select>
+        </div>
+        <div><label>Categoria</label>
+          <select id="t-cat">
+            <option>Alimentação</option><option>Moradia</option><option>Transporte</option>
+            <option>Saúde</option><option>Lazer</option><option>Educação</option>
+            <option>Salário</option><option>Outros</option>
+          </select>
+        </div>
+        <div><label>Valor (R$)</label><input required type="number" step="0.01" id="t-valor" placeholder="150"></div>
+        <div><label>Data</label><input required type="date" id="t-data"></div>
+        <div class="full"><label>Descrição (opcional)</label><input id="t-desc" placeholder="Mercado da semana..."></div>
+      </div>
+      <div class="row-foot" style="margin-top:6px; justify-content:flex-start; gap:6px;">
+        <input type="checkbox" id="t-recorrente" style="width:auto;"> <label for="t-recorrente" style="margin:0; cursor:pointer;">repete todo mês (assinatura, plano...)</label>
+      </div>
+      <button class="addbtn" type="submit">Lançar</button>
+    </form>
+
+    <h3 style="font-size:13px; color:var(--ink-dim); font-weight:500; margin-bottom:10px;">Orçamento por categoria (mês atual)</h3>
+    <div id="list-orcamento"></div>
+
+    <h3 style="font-size:13px; color:var(--ink-dim); font-weight:500; margin:20px 0 10px;">Lançamentos recentes</h3>
+    <div id="list-txn"></div>
+  </section>
+
+  <section id="contas">
+    <form class="entry" id="form-conta">
+      <h3>Nova conta fixa</h3>
+      <div class="grid">
+        <div class="full"><label>Nome</label><input required id="cn-nome" placeholder="Aluguel, luz, internet..."></div>
+        <div><label>Valor (R$)</label><input required type="number" step="0.01" id="cn-valor" placeholder="150"></div>
+        <div><label>Dia do vencimento</label><input required type="number" min="1" max="31" id="cn-dia" placeholder="10"></div>
+      </div>
+      <button class="addbtn" type="submit">Adicionar conta</button>
+    </form>
+    <div id="list-contas"></div>
+  </section>
+
+  <section id="emprestimos">
+    <form class="entry" id="form-emprestimo">
+      <h3>Novo empréstimo</h3>
+      <div class="grid">
+        <div class="full"><label>Nome da pessoa</label><input required id="e-nome" placeholder="João, minha irmã..."></div>
+        <div><label>Valor emprestado (R$)</label><input required type="number" step="0.01" id="e-valor" placeholder="200"></div>
+        <div><label>Data</label><input required type="date" id="e-data"></div>
+      </div>
+      <button class="addbtn" type="submit">Registrar empréstimo</button>
+    </form>
+    <div id="list-emprestimos"></div>
+  </section>
+
+  <section id="dividas">
+    <form class="entry" id="form-divida">
+      <h3>Nova dívida</h3>
+      <div class="grid">
+        <div class="full"><label>Nome</label><input required id="d-nome" placeholder="Cartão Nubank, financiamento do carro..."></div>
+        <div><label>Categoria</label>
+          <select id="d-cat">
+            <option>Cartão de crédito</option>
+            <option>Empréstimo</option>
+            <option>Financiamento</option>
+            <option>Outro</option>
+          </select>
+        </div>
+        <div><label>Valor total (R$)</label><input required type="number" step="0.01" id="d-total" placeholder="3000"></div>
+        <div><label>Parcelas totais</label><input required type="number" id="d-parctot" placeholder="10"></div>
+        <div><label>Parcelas já pagas</label><input required type="number" id="d-parcpag" placeholder="2" value="0"></div>
+      </div>
+      <button class="addbtn" type="submit">Adicionar dívida</button>
+    </form>
+    <div id="list-dividas"></div>
+  </section>
+
+  <section id="metas">
+    <div class="card" id="cdi-card" style="border-color:var(--goal);">
+      <div class="item-name" style="margin-bottom:4px;">Quanto rende no CDI</div>
+      <div class="item-meta" style="margin-bottom:14px;">simule o rendimento e transforme em meta</div>
+      <div class="grid">
+        <div><label>Valor a investir (R$)</label><input type="number" step="0.01" id="c-valor" placeholder="1000"></div>
+        <div><label>% do CDI oferecido pelo banco</label><input type="number" step="1" id="c-pct" placeholder="100" value="100"></div>
+        <div><label>CDI ao ano (%)</label><input type="number" step="0.01" id="c-cdi" placeholder="14.00" value="14.00"></div>
+        <div><label>Prazo (meses)</label><input type="number" id="c-meses" placeholder="12" value="12"></div>
+      </div>
+      <div class="row-foot" style="margin-top:6px; color:var(--ink-dim);">CDI de referência: cerca de 14% a.a. (set/2026) — confira o valor atualizado no seu banco antes de decidir</div>
+      <div class="card" style="background:var(--bg); margin-top:12px; margin-bottom:0;">
+        <div class="item-head">
+          <div>
+            <div class="item-meta">valor final projetado</div>
+            <div class="item-name" id="c-final">R$ 0,00</div>
+          </div>
+          <div class="amt" style="color:var(--goal);" id="c-ganho">+R$ 0<small>rendimento bruto</small></div>
+        </div>
+      </div>
+      <div class="row-foot" style="margin-top:8px;">rendimento bruto — desconta Imposto de Renda regressivo conforme o prazo</div>
+      <button class="addbtn" id="c-criar-meta" type="button">Usar como meta</button>
+    </div>
+
+    <div class="card" id="reserva-card" style="border-color:var(--gold);">
+      <div class="item-head">
+        <div>
+          <div class="item-name">Reserva de emergência</div>
+          <div class="item-meta" id="reserva-meta">defina seu gasto mensal essencial abaixo</div>
+          <span class="tag goal" style="background:rgba(201,162,75,0.16); color:var(--gold);">prioridade</span>
+        </div>
+        <div class="amt" id="reserva-pct">0%<small>alcançado</small></div>
+      </div>
+      <div class="bar goal-bar" style="margin-top:12px;"><div id="reserva-bar" style="width:0%; background:var(--gold);"></div></div>
+      <div class="row-foot"><span id="reserva-falta">—</span></div>
+      <div class="grid" style="margin-top:14px;">
+        <div><label>Gasto mensal essencial (R$)</label><input type="number" step="0.01" id="r-mensal" placeholder="2000"></div>
+        <div><label>Meses de cobertura</label>
+          <select id="r-meses"><option value="3">3 meses</option><option value="6" selected>6 meses</option><option value="12">12 meses</option></select>
+        </div>
+        <div class="full"><label>Já guardado (R$)</label><input type="number" step="0.01" id="r-guardado" placeholder="0"></div>
+      </div>
+      <button class="addbtn" id="reserva-save" type="button">Salvar reserva</button>
+    </div>
+
+    <form class="entry" id="form-meta">
+      <h3>Nova meta</h3>
+      <div class="grid">
+        <div class="full"><label>Nome</label><input required id="m-nome" placeholder="Reserva de emergência, viagem..."></div>
+        <div><label>Valor alvo (R$)</label><input required type="number" step="0.01" id="m-alvo" placeholder="5000"></div>
+        <div><label>Já guardado (R$)</label><input required type="number" step="0.01" id="m-atual" placeholder="500" value="0"></div>
+      </div>
+      <button class="addbtn" type="submit">Adicionar meta</button>
+    </form>
+    <div id="list-metas"></div>
+  </section>
+</div>
+
+<script>
+const LS_D = 'lr-dividas', LS_M = 'lr-metas', LS_R = 'lr-reserva', LS_T = 'lr-transacoes', LS_O = 'lr-orcamentos', LS_S = 'lr-renda', LS_C = 'lr-contas', LS_E = 'lr-emprestimos', LS_SC = 'lr-saldo-conta';
+const BUDGET_CATS = ['Alimentação','Moradia','Transporte','Saúde','Lazer','Educação','Outros'];
+let cloudMode = false, cloudDoc = null, cloudSyncTimer = null;
+const load = k => { try{ return JSON.parse(localStorage.getItem(k)) || []; } catch(e){ return []; } };
+const save = (k,v) => { try{ localStorage.setItem(k, JSON.stringify(v)); } catch(e){} scheduleCloudSync(); };
+function scheduleCloudSync(){
+  if(!cloudMode || !cloudDoc) return;
+  clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = setTimeout(async ()=>{
+    try{ await cloudDoc.set({ dividas, metas, reserva, transacoes, orcamentos, renda, contas, emprestimos, saldoConta }); }
+    catch(e){}
+  }, 600);
+}
+const fmt = n => 'R$ ' + (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const mesAtual = () => new Date().toISOString().slice(0,7);
+
+let renda = (()=>{ try{ return JSON.parse(localStorage.getItem(LS_S)) || {salario:0, extra:0, decimo:false}; } catch(e){ return {salario:0, extra:0, decimo:false}; } })();
+document.getElementById('rd-salario').value = renda.salario || '';
+document.getElementById('rd-extra').value = renda.extra || 0;
+document.getElementById('rd-decimo').checked = !!renda.decimo;
+
+function calcRenda(){
+  renda = {
+    salario: parseFloat(document.getElementById('rd-salario').value)||0,
+    extra: parseFloat(document.getElementById('rd-extra').value)||0,
+    decimo: document.getElementById('rd-decimo').checked
+  };
+  save(LS_S, renda);
+  const mensal = renda.salario + renda.extra;
+  let anual = mensal * 12;
+  if(renda.decimo) anual += renda.salario + (renda.salario/3);
+  document.getElementById('rd-mensal').textContent = fmt(mensal);
+  document.getElementById('rd-anual').innerHTML = fmt(anual) + '<small>por ano</small>';
+}
+['rd-salario','rd-extra','rd-decimo'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', calcRenda);
+});
+calcRenda();
+
+let dividas = load(LS_D);
+let metas = load(LS_M);
+let transacoes = load(LS_T);
+let contas = load(LS_C);
+let emprestimos = load(LS_E);
+let saldoConta = (()=>{ try{ return parseFloat(localStorage.getItem(LS_SC)) || 0; } catch(e){ return 0; } })();
+document.getElementById('sc-valor').value = saldoConta || '';
+function ajustarSaldo(delta){
+  saldoConta += delta;
+  try{ localStorage.setItem(LS_SC, saldoConta); }catch(e){}
+  scheduleCloudSync();
+  const el = document.getElementById('sc-valor');
+  if(el) el.value = saldoConta || '';
+}
+document.getElementById('sc-salvar').addEventListener('click', ()=>{
+  saldoConta = parseFloat(document.getElementById('sc-valor').value)||0;
+  try{ localStorage.setItem(LS_SC, saldoConta); }catch(e){}
+  scheduleCloudSync();
+  renderResumo();
+});
+document.getElementById('e-data').value = new Date().toISOString().slice(0,10);
+let orcamentos = (()=>{ try{ return JSON.parse(localStorage.getItem(LS_O)) || {}; } catch(e){ return {}; } })();
+document.getElementById('t-data').value = new Date().toISOString().slice(0,10);
+let reserva = (()=>{ try{ return JSON.parse(localStorage.getItem(LS_R)) || {mensal:0, meses:6, guardado:0}; } catch(e){ return {mensal:0, meses:6, guardado:0}; } })();
+let chartDebt, chartGoal;
+
+document.getElementById('r-mensal').value = reserva.mensal || '';
+document.getElementById('r-meses').value = reserva.meses || 6;
+document.getElementById('r-guardado').value = reserva.guardado || '';
+
+document.getElementById('reserva-save').addEventListener('click', ()=>{
+  reserva = {
+    mensal: parseFloat(document.getElementById('r-mensal').value) || 0,
+    meses: parseInt(document.getElementById('r-meses').value) || 6,
+    guardado: parseFloat(document.getElementById('r-guardado').value) || 0
+  };
+  save(LS_R, reserva);
+  renderReserva();
+  renderResumo();
+});
+
+function calcCDI(){
+  const valor = parseFloat(document.getElementById('c-valor').value)||0;
+  const pct = parseFloat(document.getElementById('c-pct').value)||0;
+  const cdiAno = parseFloat(document.getElementById('c-cdi').value)||0;
+  const meses = parseInt(document.getElementById('c-meses').value)||0;
+  const iMensalCDI = Math.pow(1 + cdiAno/100, 1/12) - 1;
+  const iMensalContratada = iMensalCDI * (pct/100);
+  const final = valor * Math.pow(1 + iMensalContratada, meses);
+  const ganho = final - valor;
+  document.getElementById('c-final').textContent = fmt(final);
+  document.getElementById('c-ganho').innerHTML = '+' + fmt(ganho) + '<small>rendimento bruto</small>';
+  return { valor, final, meses };
+}
+['c-valor','c-pct','c-cdi','c-meses'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', calcCDI);
+});
+document.getElementById('c-criar-meta').addEventListener('click', ()=>{
+  const { valor, final, meses } = calcCDI();
+  if(final <= 0) return;
+  metas.push({ id: Date.now(), nome: `Investimento CDI (${meses} meses)`, alvo: final, atual: valor });
+  save(LS_M, metas);
+  renderAll();
+  document.querySelector('.tab-btn[data-tab="metas"]').click();
+});
+calcCDI();
+
+function renderReserva(){
+  const alvo = reserva.mensal * reserva.meses;
+  const pct = alvo > 0 ? Math.min(100, Math.round((reserva.guardado/alvo)*100)) : 0;
+  document.getElementById('reserva-pct').textContent = pct + '%';
+  document.getElementById('reserva-bar').style.width = pct + '%';
+  if(alvo > 0){
+    document.getElementById('reserva-meta').textContent = `alvo: ${fmt(alvo)} (${reserva.meses} meses de ${fmt(reserva.mensal)})`;
+    document.getElementById('reserva-falta').textContent = `faltam ${fmt(Math.max(0, alvo-reserva.guardado))}`;
+  } else {
+    document.getElementById('reserva-meta').textContent = 'defina seu gasto mensal essencial abaixo';
+    document.getElementById('reserva-falta').textContent = '—';
+  }
+}
+
+// tabs
+document.querySelectorAll('.tab-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('section').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById(b.dataset.tab).classList.add('active');
+  });
+});
+
+document.getElementById('form-divida').addEventListener('submit', e=>{
+  e.preventDefault();
+  const total = parseFloat(document.getElementById('d-total').value);
+  const parctot = parseInt(document.getElementById('d-parctot').value);
+  const parcpag = Math.min(parseInt(document.getElementById('d-parcpag').value)||0, parctot);
+  dividas.push({
+    id: Date.now(),
+    nome: document.getElementById('d-nome').value.trim(),
+    cat: document.getElementById('d-cat').value,
+    total, parctot, parcpag
+  });
+  save(LS_D, dividas);
+  e.target.reset();
+  document.getElementById('d-parcpag').value = 0;
+  renderAll();
+});
+
+document.getElementById('form-meta').addEventListener('submit', e=>{
+  e.preventDefault();
+  const alvo = parseFloat(document.getElementById('m-alvo').value);
+  const atual = parseFloat(document.getElementById('m-atual').value)||0;
+  metas.push({ id: Date.now(), nome: document.getElementById('m-nome').value.trim(), alvo, atual });
+  save(LS_M, metas);
+  e.target.reset();
+  document.getElementById('m-atual').value = 0;
+  renderAll();
+});
+
+document.getElementById('form-txn').addEventListener('submit', e=>{
+  e.preventDefault();
+  transacoes.push({
+    id: Date.now(),
+    tipo: document.getElementById('t-tipo').value,
+    cat: document.getElementById('t-cat').value,
+    valor: parseFloat(document.getElementById('t-valor').value)||0,
+    data: document.getElementById('t-data').value,
+    desc: document.getElementById('t-desc').value.trim(),
+    recorrente: document.getElementById('t-recorrente').checked
+  });
+  save(LS_T, transacoes);
+  const ultimoValor = transacoes[transacoes.length-1].valor;
+  ajustarSaldo(document.getElementById('t-tipo').value === 'receita' ? ultimoValor : -ultimoValor);
+  e.target.reset();
+  document.getElementById('t-data').value = new Date().toISOString().slice(0,10);
+  renderAll();
+});
+
+document.getElementById('form-conta').addEventListener('submit', e=>{
+  e.preventDefault();
+  contas.push({
+    id: Date.now(),
+    nome: document.getElementById('cn-nome').value.trim(),
+    valor: parseFloat(document.getElementById('cn-valor').value)||0,
+    dia: parseInt(document.getElementById('cn-dia').value)||1,
+    pagas: []
+  });
+  save(LS_C, contas);
+  e.target.reset();
+  renderAll();
+});
+
+document.getElementById('form-emprestimo').addEventListener('submit', e=>{
+  e.preventDefault();
+  emprestimos.push({
+    id: Date.now(),
+    nome: document.getElementById('e-nome').value.trim(),
+    valor: parseFloat(document.getElementById('e-valor').value)||0,
+    data: document.getElementById('e-data').value,
+    recebido: 0
+  });
+  save(LS_E, emprestimos);
+  e.target.reset();
+  document.getElementById('e-data').value = new Date().toISOString().slice(0,10);
+  renderAll();
+});
+
+document.getElementById('btn-install').addEventListener('click', ()=>{
+  const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent);
+  const stepsEl = document.getElementById('install-steps');
+  if(isStandalone){
+    stepsEl.innerHTML = 'Você já está usando o app instalado — ele abre direto da tela de início, sem barra do navegador. 🎉';
+  } else if(isIOS && isSafari){
+    stepsEl.innerHTML = `
+      <div style="margin-bottom:10px;">1. Toque no ícone de compartilhar <strong>⬆️</strong> na barra do Safari (embaixo ou em cima, dependendo do iPhone)</div>
+      <div style="margin-bottom:10px;">2. Deslize e toque em <strong>"Adicionar à Tela de Início"</strong></div>
+      <div>3. Toque em <strong>"Adicionar"</strong> — pronto, o app fica na tela como se fosse baixado da App Store</div>`;
+  } else if(isIOS){
+    stepsEl.innerHTML = 'Pra instalar no iPhone, abra este link pelo <strong>Safari</strong> (não funciona em outros navegadores no iOS) e toque de novo aqui.';
+  } else {
+    stepsEl.innerHTML = 'Esse botão é pro iPhone. Se você estiver no Android, use o menu do navegador (⋮) e toque em "Adicionar à tela inicial" / "Instalar app".';
+  }
+  document.getElementById('install-overlay').style.display = 'flex';
+});
+document.getElementById('install-close').addEventListener('click', ()=>{
+  document.getElementById('install-overlay').style.display = 'none';
+});
+document.getElementById('install-overlay').addEventListener('click', e=>{
+  if(e.target.id === 'install-overlay') e.target.style.display = 'none';
+});
+
+document.getElementById('rd-mes-lancar').addEventListener('click', ()=>{
+  const valor = parseFloat(document.getElementById('rd-mes-valor').value)||0;
+  if(valor <= 0) return;
+  transacoes.push({
+    id: Date.now(),
+    tipo: 'receita',
+    cat: 'Salário',
+    valor,
+    data: new Date().toISOString().slice(0,10),
+    desc: 'Salário do mês'
+  });
+  save(LS_T, transacoes);
+  ajustarSaldo(valor);
+  document.getElementById('rd-mes-valor').value = '';
+  renderAll();
+});
+
+function delDivida(id){ dividas = dividas.filter(d=>d.id!==id); save(LS_D,dividas); renderAll(); }
+function delMeta(id){ metas = metas.filter(m=>m.id!==id); save(LS_M,metas); renderAll(); }
+function delTxn(id){
+  const t = transacoes.find(x=>x.id===id);
+  if(t) ajustarSaldo(t.tipo==='receita' ? -t.valor : t.valor);
+  transacoes = transacoes.filter(t=>t.id!==id); save(LS_T,transacoes); renderAll();
+}
+function setOrc(cat, val){ orcamentos[cat] = parseFloat(val)||0; save(LS_O, orcamentos); renderFluxo(); }
+function delConta(id){ contas = contas.filter(c=>c.id!==id); save(LS_C,contas); renderAll(); }
+function togglePaga(id){
+  const mes = mesAtual();
+  const c = contas.find(x=>x.id===id);
+  if(!c) return;
+  c.pagas = c.pagas.includes(mes) ? c.pagas.filter(m=>m!==mes) : [...c.pagas, mes];
+  save(LS_C, contas);
+  renderAll();
+}
+function delEmprestimo(id){ emprestimos = emprestimos.filter(e=>e.id!==id); save(LS_E,emprestimos); renderAll(); }
+function receberPagamento(id){
+  const emp = emprestimos.find(e=>e.id===id);
+  if(!emp) return;
+  const restante = emp.valor - emp.recebido;
+  const val = parseFloat(prompt(`Quanto ${emp.nome} te pagou agora? (falta ${fmt(restante)})`, restante.toFixed(2)));
+  if(!val || val<=0) return;
+  emp.recebido += val;
+  save(LS_E, emprestimos);
+  transacoes.push({ id: Date.now(), tipo:'receita', cat:'Outros', valor: val, data: new Date().toISOString().slice(0,10), desc: `Pagamento de ${emp.nome}`, recorrente:false });
+  save(LS_T, transacoes);
+  ajustarSaldo(val);
+  renderAll();
+}
+window.delDivida = delDivida; window.delMeta = delMeta; window.delTxn = delTxn; window.setOrc = setOrc;
+window.delConta = delConta; window.togglePaga = togglePaga;
+window.delEmprestimo = delEmprestimo; window.receberPagamento = receberPagamento;
+
+function autoRecorrentes(){
+  const mes = mesAtual();
+  const jaTemEsteMes = (cat,desc,tipo) => transacoes.some(t=> t.tipo===tipo && t.cat===cat && t.desc===desc && t.data && t.data.startsWith(mes));
+  const modelos = {};
+  transacoes.filter(t=>t.recorrente).forEach(t=>{
+    const chave = t.tipo+'|'+t.cat+'|'+t.desc;
+    if(!modelos[chave] || t.data > modelos[chave].data) modelos[chave] = t;
+  });
+  let mudou = false;
+  Object.values(modelos).forEach(t=>{
+    if(!t.data.startsWith(mes) && !jaTemEsteMes(t.cat, t.desc, t.tipo)){
+      transacoes.push({ id: Date.now()+Math.random(), tipo:t.tipo, cat:t.cat, valor:t.valor, data: mes+'-01', desc:t.desc, recorrente:true });
+      ajustarSaldo(t.tipo==='receita' ? t.valor : -t.valor);
+      mudou = true;
+    }
+  });
+  if(mudou) save(LS_T, transacoes);
+}
+autoRecorrentes();
+
+function animateStat(id, target){
+  const el = document.getElementById(id);
+  const start = parseFloat(el.dataset.raw || 0);
+  el.dataset.raw = target;
+  const t0 = performance.now();
+  const dur = 500;
+  function step(t){
+    const p = Math.min(1, (t - t0) / dur);
+    const eased = 1 - Math.pow(1-p, 3);
+    el.textContent = fmt(start + (target - start) * eased);
+    if(p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function renderDividas(){
+  const wrap = document.getElementById('list-dividas');
+  if(!dividas.length){ wrap.innerHTML = '<div class="empty">Nenhuma dívida cadastrada — adicione a primeira acima</div>'; return; }
+  wrap.innerHTML = dividas.map(d=>{
+    const valorParcela = d.total/d.parctot;
+    const pago = valorParcela * d.parcpag;
+    const restante = d.total - pago;
+    const pct = Math.round((d.parcpag/d.parctot)*100);
+    return `<div class="card">
+      <div class="item-head">
+        <div>
+          <div class="item-name">${d.nome}</div>
+          <div class="item-meta">${d.parcpag}/${d.parctot} parcelas · ${fmt(valorParcela)} cada</div>
+          <span class="tag debt">${d.cat}</span>
+        </div>
+        <div class="amt">${fmt(restante)}<small>restante</small></div>
+      </div>
+      <div class="bar debt-bar"><div style="width:${pct}%"></div></div>
+      <div class="row-foot"><span>${pct}% quitado</span><button class="del" onclick="delDivida(${d.id})">remover</button></div>
+    </div>`;
+  }).join('');
+}
+
+function renderMetas(){
+  const wrap = document.getElementById('list-metas');
+  if(!metas.length){ wrap.innerHTML = '<div class="empty">Nenhuma meta cadastrada — adicione a primeira acima</div>'; return; }
+  wrap.innerHTML = metas.map(m=>{
+    const pct = Math.min(100, Math.round((m.atual/m.alvo)*100));
+    return `<div class="card">
+      <div class="item-head">
+        <div>
+          <div class="item-name">${m.nome}</div>
+          <div class="item-meta">${fmt(m.atual)} de ${fmt(m.alvo)}</div>
+          <span class="tag goal">meta</span>
+        </div>
+        <div class="amt">${pct}%<small>alcançado</small></div>
+      </div>
+      <div class="bar goal-bar"><div style="width:${pct}%"></div></div>
+      <div class="row-foot"><span>faltam ${fmt(Math.max(0,m.alvo-m.atual))}</span><button class="del" onclick="delMeta(${m.id})">remover</button></div>
+    </div>`;
+  }).join('');
+}
+
+function gastosPorCategoriaMes(){
+  const mes = mesAtual();
+  const byCat = {};
+  transacoes.filter(t=>t.tipo==='despesa' && t.data && t.data.startsWith(mes)).forEach(t=>{
+    byCat[t.cat] = (byCat[t.cat]||0) + t.valor;
+  });
+  return byCat;
+}
+
+function renderContas(){
+  const wrap = document.getElementById('list-contas');
+  if(!contas.length){ wrap.innerHTML = '<div class="empty">Nenhuma conta cadastrada — adicione a primeira acima</div>'; return; }
+  const mes = mesAtual();
+  const hoje = new Date().getDate();
+  wrap.innerHTML = contas.map(c=>{
+    const paga = c.pagas.includes(mes);
+    let status, cor;
+    if(paga){ status = 'paga este mês'; cor = 'var(--goal)'; }
+    else if(hoje > c.dia){ status = 'atrasada'; cor = 'var(--debt)'; }
+    else { status = `vence em ${c.dia - hoje} dia(s)`; cor = 'var(--gold)'; }
+    return `<div class="card">
+      <div class="item-head">
+        <div>
+          <div class="item-name">${c.nome}</div>
+          <div class="item-meta">vencimento dia ${c.dia}</div>
+          <span class="tag" style="background:${cor}22; color:${cor};">${status}</span>
+        </div>
+        <div class="amt">${fmt(c.valor)}</div>
+      </div>
+      <div class="row-foot">
+        <button class="del" onclick="togglePaga(${c.id})" style="color:var(--goal); text-decoration:none;">${paga ? '↺ desmarcar' : '✓ marcar como paga'}</button>
+        <button class="del" onclick="delConta(${c.id})">remover</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderEmprestimos(){
+  const wrap = document.getElementById('list-emprestimos');
+  if(!emprestimos.length){ wrap.innerHTML = '<div class="empty">Ninguém te deve nada por aqui ainda — registre acima</div>'; return; }
+  wrap.innerHTML = emprestimos.map(e=>{
+    const restante = e.valor - e.recebido;
+    const quitado = restante <= 0;
+    const pct = e.valor>0 ? Math.min(100, Math.round((e.recebido/e.valor)*100)) : 0;
+    return `<div class="card">
+      <div class="item-head">
+        <div>
+          <div class="item-name">${e.nome}</div>
+          <div class="item-meta">emprestado em ${e.data ? e.data.split('-').reverse().join('/') : ''} · ${fmt(e.recebido)} recebido</div>
+          <span class="tag" style="background:${quitado?'var(--goal-bg)':'var(--debt-bg)'}; color:${quitado?'var(--goal)':'var(--debt)'};">${quitado ? 'quitado' : 'pendente'}</span>
+        </div>
+        <div class="amt">${fmt(restante)}<small>falta receber</small></div>
+      </div>
+      <div class="bar goal-bar"><div style="width:${pct}%"></div></div>
+      <div class="row-foot">
+        ${quitado ? '' : `<button class="del" onclick="receberPagamento(${e.id})" style="color:var(--goal); text-decoration:none;">💰 recebi um pagamento</button>`}
+        <button class="del" onclick="delEmprestimo(${e.id})">remover</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderFluxo(){
+  const mes = mesAtual();
+  const doMes = transacoes.filter(t=> t.data && t.data.startsWith(mes));
+  const receitas = doMes.filter(t=>t.tipo==='receita').reduce((s,t)=>s+t.valor,0);
+  const despesas = doMes.filter(t=>t.tipo==='despesa').reduce((s,t)=>s+t.valor,0);
+  document.getElementById('fx-receitas').textContent = fmt(receitas);
+  document.getElementById('fx-despesas').textContent = fmt(despesas);
+
+  const gastos = gastosPorCategoriaMes();
+  document.getElementById('list-orcamento').innerHTML = BUDGET_CATS.map(cat=>{
+    const gasto = gastos[cat] || 0;
+    const limite = orcamentos[cat] || 0;
+    const pct = limite > 0 ? Math.min(100, Math.round((gasto/limite)*100)) : 0;
+    const estourou = limite > 0 && gasto > limite;
+    const cor = estourou ? 'var(--debt)' : 'var(--gold)';
+    return `<div class="card">
+      <div class="item-head">
+        <div>
+          <div class="item-name" style="font-size:14.5px;">${cat}</div>
+          <div class="item-meta">${fmt(gasto)} gasto${limite>0 ? ' de ' + fmt(limite) : ''}</div>
+        </div>
+        <div style="width:100px;"><input type="number" step="0.01" placeholder="limite" value="${limite||''}" onchange="setOrc('${cat}', this.value)"></div>
+      </div>
+      ${limite>0 ? `<div class="bar"><div style="width:${pct}%; background:${cor};"></div></div>` : ''}
+      ${estourou ? `<div class="row-foot" style="color:var(--debt);">orçamento estourado</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const recentes = [...transacoes].sort((a,b)=> (b.data||'').localeCompare(a.data||'') || b.id-a.id).slice(0,15);
+  const wrapT = document.getElementById('list-txn');
+  if(!recentes.length){ wrapT.innerHTML = '<div class="empty">Nenhum lançamento ainda — registre o primeiro acima</div>'; }
+  else {
+    wrapT.innerHTML = recentes.map(t=>`<div class="card" style="padding:12px 18px;">
+      <div class="item-head">
+        <div>
+          <div class="item-name" style="font-size:14.5px;">${t.desc || t.cat}</div>
+          <div class="item-meta">${t.cat} · ${t.data ? t.data.split('-').reverse().join('/') : ''}</div>
+        </div>
+        <div class="amt" style="font-size:15px; color:${t.tipo==='receita' ? 'var(--goal)' : 'var(--debt)'};">${t.tipo==='receita'?'+':'-'} ${fmt(t.valor)}</div>
+      </div>
+      <div class="row-foot" style="justify-content:flex-end;"><button class="del" onclick="delTxn(${t.id})">remover</button></div>
+    </div>`).join('');
+  }
+}
+
+function renderResumo(){
+  const totalRestante = dividas.reduce((s,d)=> s + (d.total - (d.total/d.parctot)*d.parcpag), 0);
+  const totalGuardado = metas.reduce((s,m)=> s + m.atual, 0);
+  animateStat('stat-debt', totalRestante);
+  animateStat('stat-goal', totalGuardado);
+  animateStat('stat-saldoconta', saldoConta);
+  const patrimonio = saldoConta + totalGuardado + (reserva.guardado||0) - totalRestante;
+  animateStat('stat-patrimonio', patrimonio);
+  const alvoReserva = reserva.mensal * reserva.meses;
+  document.getElementById('stat-reserva').textContent = alvoReserva > 0 ? Math.min(100, Math.round((reserva.guardado/alvoReserva)*100)) + '%' : '—';
+
+  const mes = mesAtual();
+  const doMes = transacoes.filter(t=> t.data && t.data.startsWith(mes));
+  const saldoMes = doMes.filter(t=>t.tipo==='receita').reduce((s,t)=>s+t.valor,0) - doMes.filter(t=>t.tipo==='despesa').reduce((s,t)=>s+t.valor,0);
+  document.getElementById('stat-saldo').textContent = fmt(saldoMes);
+  document.getElementById('stat-saldo').classList.add('pulse');
+  setTimeout(()=>document.getElementById('stat-saldo').classList.remove('pulse'), 500);
+
+  const anoAtual = mes.slice(0,4);
+  const realizadoAno = transacoes.filter(t=> t.tipo==='receita' && t.cat==='Salário' && t.data && t.data.startsWith(anoAtual)).reduce((s,t)=>s+t.valor,0);
+  document.getElementById('rd-realizado').textContent = fmt(realizadoAno);
+  const salarioMes = doMes.filter(t=>t.tipo==='receita' && t.cat==='Salário').reduce((s,t)=>s+t.valor,0);
+  document.getElementById('rd-mes-status').textContent = salarioMes > 0 ? `já lançado esse mês: ${fmt(salarioMes)}` : 'ainda não lançou o recebimento deste mês';
+
+  const ink = getComputedStyle(document.body).getPropertyValue('--ink').trim();
+  const line = getComputedStyle(document.body).getPropertyValue('--line').trim();
+
+  const gastos = gastosPorCategoriaMes();
+  const gastoCats = Object.keys(gastos);
+  document.getElementById('chartGastos').style.display = gastoCats.length ? 'block':'none';
+  document.getElementById('chartGastosEmpty').style.display = gastoCats.length ? 'none':'block';
+  if(window.chartGastos) window.chartGastos.destroy();
+  if(gastoCats.length){
+    window.chartGastos = new Chart(document.getElementById('chartGastos'), {
+      type:'doughnut',
+      data:{ labels:gastoCats, datasets:[{ data:gastoCats.map(c=>gastos[c]),
+        backgroundColor:['#B5533C','#C9A24B','#3E8E7E','#7A6A9C','#5C685F','#8A7238','#4A5A52'] }]},
+      options:{ plugins:{ legend:{ position:'bottom', labels:{ color: ink, font:{family:"'Work Sans',sans-serif", size:11} } } } }
+    });
+  }
+
+  // debt by category
+  const byCat = {};
+  dividas.forEach(d=>{
+    const restante = d.total - (d.total/d.parctot)*d.parcpag;
+    byCat[d.cat] = (byCat[d.cat]||0) + restante;
+  });
+  const catLabels = Object.keys(byCat);
+  document.getElementById('chartDebt').style.display = catLabels.length ? 'block':'none';
+  document.getElementById('chartDebtEmpty').style.display = catLabels.length ? 'none':'block';
+  if(chartDebt) chartDebt.destroy();
+  if(catLabels.length){
+    chartDebt = new Chart(document.getElementById('chartDebt'), {
+      type:'doughnut',
+      data:{ labels:catLabels, datasets:[{ data:catLabels.map(c=>byCat[c]),
+        backgroundColor:['#B5533C','#C9A24B','#3E8E7E','#7A6A9C','#5C685F'] }]},
+      options:{ plugins:{ legend:{ position:'bottom', labels:{ color: ink, font:{family:"'Work Sans',sans-serif", size:11} } } } }
+    });
+  }
+
+  // goals progress
+  document.getElementById('chartGoal').style.display = metas.length ? 'block':'none';
+  document.getElementById('chartGoalEmpty').style.display = metas.length ? 'none':'block';
+  if(chartGoal) chartGoal.destroy();
+  if(metas.length){
+    chartGoal = new Chart(document.getElementById('chartGoal'), {
+      type:'bar',
+      data:{ labels: metas.map(m=>m.nome), datasets:[
+        { label:'Guardado', data: metas.map(m=>m.atual), backgroundColor:'#3E8E7E' },
+        { label:'Falta', data: metas.map(m=>Math.max(0,m.alvo-m.atual)), backgroundColor: line }
+      ]},
+      options:{
+        indexAxis:'y',
+        scales:{ x:{ stacked:true, ticks:{color:ink, font:{family:"'Work Sans',sans-serif"}}, grid:{color:line} },
+                 y:{ stacked:true, ticks:{color:ink, font:{family:"'Work Sans',sans-serif"}}, grid:{display:false} } },
+        plugins:{ legend:{ position:'bottom', labels:{ color: ink, font:{family:"'Work Sans',sans-serif", size:11} } } }
+      }
+    });
+  }
+}
+
+function renderAll(){ renderDividas(); renderMetas(); renderReserva(); renderContas(); renderEmprestimos(); renderFluxo(); renderResumo(); }
+
+document.getElementById('btn-export').addEventListener('click', async ()=>{
+  let csv = 'Tipo;Nome/Descrição;Categoria;Valor;Data/Info\n';
+  dividas.forEach(d=> csv += `Dívida;${d.nome};${d.cat};${d.total};${d.parcpag}/${d.parctot} parcelas\n`);
+  metas.forEach(m=> csv += `Meta;${m.nome};;${m.alvo};guardado ${m.atual}\n`);
+  contas.forEach(c=> csv += `Conta fixa;${c.nome};;${c.valor};dia ${c.dia}\n`);
+  emprestimos.forEach(e=> csv += `Empréstimo;${e.nome};;${e.valor};recebido ${e.recebido}\n`);
+  transacoes.forEach(t=> csv += `${t.tipo};${t.desc||t.cat};${t.cat};${t.valor};${t.data}\n`);
+  csv += `Reserva de emergência;;;${reserva.guardado||0};alvo ${(reserva.mensal||0)*(reserva.meses||0)}\n`;
+
+  try{
+    const downloads = await claude.use('downloads');
+    if(downloads){
+      await downloads.save({ filename: 'livro-razao-export.csv', data: csv });
+      return;
+    }
+  }catch(err){}
+  // fallback local (fora do ambiente publicado)
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'livro-razao-export.csv';
+  a.click();
+});
+renderAll();
+
+async function initCloud(){
+  const statusEl = document.getElementById('cloud-status');
+  try{
+    const db = await claude.use('db');
+    const user = await claude.use('user');
+    if(!db || !user){ return; }
+    const uid = await user.id();
+    if(!uid){ statusEl.textContent = 'salvando neste navegador (modo local)'; return; }
+    cloudDoc = db.doc('data/users/' + uid + '/state');
+    const snap = await cloudDoc.get();
+    if(snap.exists){
+      const d = snap.data() || {};
+      if(d.dividas) dividas = d.dividas;
+      if(d.metas) metas = d.metas;
+      if(d.reserva) reserva = d.reserva;
+      if(d.transacoes) transacoes = d.transacoes;
+      if(d.orcamentos) orcamentos = d.orcamentos;
+      if(d.renda) renda = d.renda;
+      if(d.contas) contas = d.contas;
+      if(d.emprestimos) emprestimos = d.emprestimos;
+      if(typeof d.saldoConta === 'number'){ saldoConta = d.saldoConta; document.getElementById('sc-valor').value = saldoConta || ''; }
+      document.getElementById('rd-salario').value = renda.salario || '';
+      document.getElementById('rd-extra').value = renda.extra || 0;
+      document.getElementById('rd-decimo').checked = !!renda.decimo;
+      document.getElementById('r-mensal').value = reserva.mensal || '';
+      document.getElementById('r-meses').value = reserva.meses || 6;
+      document.getElementById('r-guardado').value = reserva.guardado || '';
+    }
+    cloudMode = true;
+    statusEl.innerHTML = '☁ conta própria conectada — seus dados ficam só com você';
+    renderAll();
+  }catch(err){
+    statusEl.textContent = 'salvando neste navegador (modo local)';
+  }
+}
+initCloud();
+</script>
+</body>
+</html>
